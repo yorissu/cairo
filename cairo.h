@@ -418,7 +418,9 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		_test->fail.rhsb[0] = '\0'                   ;                         \
 	} while (0)
 
-// todo: document!
+/// evaluates '_expr', then on a falsy result it records the stringified '_expr'
+/// as the failure and returns from the enclosing test aborting whatever remains
+/// of it.
 #define _cairo_assert_unary(_expr) do {                                        \
 		if (!(_expr)) {                                                        \
 			_cairo_record_fail(#_expr, NULL, NULL, __FILE__, __LINE__);        \
@@ -556,7 +558,11 @@ _cairo_func void _cairo_format_pointer(char* const buffer, const size_t size,
 		default:            _cairo_format_pointer                              \
 	)((_buffer), sizeof(_buffer), (_value))
 
-// todo: document!
+/// evaluates '_lhs' '_op' '_rhs', when that is false it records the stringified
+/// operands, the operator, and the source location, formats both operand values
+/// into the failure buffers, and returns from the enclosing test.
+/// note: all operands are evaluated twice (once to compare and once to format),
+/// so avoid arguments with side effects.
 #define _cairo_assert_binary(_lhs, _rhs, _op) do {                             \
 		if (!((_lhs) _op (_rhs))) {                                            \
 			_cairo_record_fail(#_lhs, #_rhs, #_op, __FILE__, __LINE__);        \
@@ -566,7 +572,13 @@ _cairo_func void _cairo_format_pointer(char* const buffer, const size_t size,
 		}                                                                      \
 	} while (0)
 
-// todo: document!
+/// evaluates as pass when '_lhs' and '_rhs' are within '_epsilon' of each other
+/// (|lhs - rhs| <= epsilon, computed in double). on failure it records operands
+/// with the '~=' operator, formats '_lhs' and '_rhs' values into the respective
+/// failure buffers, and returns from the enclosing test.
+/// note: prefer these over '_eq'/'_neq' for real numbers.
+/// note: all operands are evaluated twice (once to compare and once to format),
+/// so avoid arguments with side effects.
 #define _cairo_assert_loosely(_lhs, _rhs, _epsilon) do {                       \
 		if (!(fabs((double)(_lhs) - (double)(_rhs)) <= (_epsilon))) {          \
 			_cairo_record_fail(#_lhs, #_rhs, "~=", __FILE__, __LINE__);        \
