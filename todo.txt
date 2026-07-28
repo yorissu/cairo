@@ -1,0 +1,8 @@
+
+- Add command line arguments for parallelizing tests.
+- Add a mechanism to parallelize tests.
+- Add asserts for strings.
+- Add minimal reporting that can be conditionally enabled/disabled in compile time (useful for lower end systems).
+- Add test setup function mechanism.
+- Add test teardown function mechanism.
+- Rework and automate examples.
