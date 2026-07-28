@@ -48,107 +48,107 @@ cairo_test_new(demo2, check_cairo_test_skip) {
 cairo_test_new(demo2, check_cairo_record_value_null_string) {
 	char buffer[65];
 	const char* const value = NULL;
-	_cairo_record_value(buffer, value);
+	_cairo_format_type(buffer, value);
 	cairo_assert_eq(strcmp(buffer, "null"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_null_pointer) {
 	char buffer[65];
-	_cairo_record_value(buffer, (void*)NULL);
+	_cairo_format_type(buffer, (void*)NULL);
 	cairo_assert_eq(strcmp(buffer, "null"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_string) {
 	char buffer[65];
 	const char* const value = "hello";
-	_cairo_record_value(buffer, value);
+	_cairo_format_type(buffer, value);
 	cairo_assert_eq(strcmp(buffer, "\"hello\""), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_string_array) {
 	char buffer[65];
 	char value[] = "world";
-	_cairo_record_value(buffer, value);
+	_cairo_format_type(buffer, value);
 	cairo_assert_eq(strcmp(buffer, "\"world\""), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_string_literal) {
 	char buffer[65];
-	_cairo_record_value(buffer, "literal");
+	_cairo_format_type(buffer, "literal");
 	cairo_assert_eq(strcmp(buffer, "\"literal\""), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_empty_string) {
 	char buffer[65];
 	const char* const value = "";
-	_cairo_record_value(buffer, value);
+	_cairo_format_type(buffer, value);
 	cairo_assert_eq(strcmp(buffer, "\"\""), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_bool_true) {
 	char buffer[65];
 	const bool value = true;
-	_cairo_record_value(buffer, value);
+	_cairo_format_type(buffer, value);
 	cairo_assert_eq(strcmp(buffer, "true"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_bool_false) {
 	char buffer[65];
 	const bool value = false;
-	_cairo_record_value(buffer, value);
+	_cairo_format_type(buffer, value);
 	cairo_assert_eq(strcmp(buffer, "false"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_characters) {
 	char buffer[65];
-	_cairo_record_value(buffer, (char)'x');
+	_cairo_format_type(buffer, (char)'x');
 	cairo_assert_eq(strcmp(buffer, "x"), 0);
-	_cairo_record_value(buffer, (signed char)-3);
+	_cairo_format_type(buffer, (signed char)-3);
 	cairo_assert_eq(strcmp(buffer, "-3"), 0);
-	_cairo_record_value(buffer, (unsigned char)200);
+	_cairo_format_type(buffer, (unsigned char)200);
 	cairo_assert_eq(strcmp(buffer, "200"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_signed_integers) {
 	char buffer[65];
-	_cairo_record_value(buffer, (signed short)-7);
+	_cairo_format_type(buffer, (signed short)-7);
 	cairo_assert_eq(strcmp(buffer, "-7"), 0);
-	_cairo_record_value(buffer, -42);
+	_cairo_format_type(buffer, -42);
 	cairo_assert_eq(strcmp(buffer, "-42"), 0);
-	_cairo_record_value(buffer, -42L);
+	_cairo_format_type(buffer, -42L);
 	cairo_assert_eq(strcmp(buffer, "-42"), 0);
-	_cairo_record_value(buffer, -42LL);
+	_cairo_format_type(buffer, -42LL);
 	cairo_assert_eq(strcmp(buffer, "-42"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_unsigned_integers) {
 	char buffer[65];
-	_cairo_record_value(buffer, (unsigned short)9);
+	_cairo_format_type(buffer, (unsigned short)9);
 	cairo_assert_eq(strcmp(buffer, "9"), 0);
-	_cairo_record_value(buffer, 42u);
+	_cairo_format_type(buffer, 42u);
 	cairo_assert_eq(strcmp(buffer, "42"), 0);
-	_cairo_record_value(buffer, 42UL);
+	_cairo_format_type(buffer, 42UL);
 	cairo_assert_eq(strcmp(buffer, "42"), 0);
-	_cairo_record_value(buffer, 42ULL);
+	_cairo_format_type(buffer, 42ULL);
 	cairo_assert_eq(strcmp(buffer, "42"), 0);
-	_cairo_record_value(buffer, (size_t)123);
+	_cairo_format_type(buffer, (size_t)123);
 	cairo_assert_eq(strcmp(buffer, "123"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_floats) {
 	char buffer[65];
-	_cairo_record_value(buffer, 1.5f);
+	_cairo_format_type(buffer, 1.5f);
 	cairo_assert_eq(strcmp(buffer, "1.5"), 0);
-	_cairo_record_value(buffer, 2.25);
+	_cairo_format_type(buffer, 2.25);
 	cairo_assert_eq(strcmp(buffer, "2.25"), 0);
-	_cairo_record_value(buffer, 3.125L);
+	_cairo_format_type(buffer, 3.125L);
 	cairo_assert_eq(strcmp(buffer, "3.125"), 0);
 }
 
 cairo_test_new(demo2, check_cairo_record_value_pointer) {
 	char buffer[65];
 	int object = 0;
-	_cairo_record_value(buffer, &object);
+	_cairo_format_type(buffer, &object);
 	cairo_assert_neq(strcmp(buffer, "null"), 0);
 	cairo_assert_gt(strlen(buffer), (size_t)0);
 }
@@ -160,7 +160,7 @@ cairo_test_new(demo2, check_cairo_record_value_truncates_safely) {
 		"0123456789012345678901234567890123456789"
 		"0123456789012345678901234567890123456789";
 	(void)memset(buffer, 'A', sizeof(buffer));
-	_cairo_record_value(buffer, value);
+	_cairo_format_type(buffer, value);
 	cairo_assert_lt(strlen(buffer), sizeof(buffer));
 	cairo_assert_eq(buffer[sizeof(buffer) - 1], '\0');
 }
