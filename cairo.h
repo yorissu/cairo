@@ -1146,6 +1146,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 #	define tests_run_default cairo_tests_run_default
 #endif
 
+/// todo: implement naming style macros for public api names.
+
 #endif
 
 /// 
