@@ -126,12 +126,12 @@ _cairo_func bool _cairo_get_glob(const char* pattern, const char* text) {
 	return '\0' == *pattern;
 }
 
-/// outcome of a single test: failed, passed, or explicitly skipped.
+/// outcome/status of a single test: failed, passed, or explicitly skipped.
 typedef enum {
-	_cairo_test_fail,
-	_cairo_test_pass,
-	_cairo_test_skip,
-} _cairo_test_e;
+	_cairo_test_status_fail,
+	_cairo_test_status_pass,
+	_cairo_test_status_skip,
+} _cairo_test_status_e;
 
 /// recorded details of failed assertions: an operator and stringified operands,
 /// the source location, and the two operand values already formatted to strings
@@ -144,35 +144,33 @@ typedef struct {
 	size_t      line    ;
 	char        lhsb[65];
 	char        rhsb[65];
-} _cairo_fail_s;
+} _cairo_test_fail_s;
 
 /// a registered test that holds the test function, its suite/name identity, the
 /// status and failure record, the measured elapsed time, and whether the filter
 /// selected it to run.
 struct _cairo_test_s {
-	void(*func)(_cairo_test_s* const);
-	const char*   suite              ;
-	const char*   name               ;
-	const char*   suite_and_name     ;
-	_cairo_test_e status             ;
-	_cairo_fail_s fail               ;
-	double        elapsed            ;
-	bool          shall_run          ;
+	void(*func)(_cairo_test_s* const)       ;
+	const char*          suite              ;
+	const char*          name               ;
+	const char*          suite_and_name     ;
+	_cairo_test_status_e status             ;
+	_cairo_test_fail_s   fail               ;
+	double               elapsed            ;
+	bool                 shall_run          ;
 };
 
-/// helper mecros that build the internal symbol names for a test from its suite
-/// and name: '_f' names the test function, '_t' names the test object, and '_r'
-/// names the test reference.
-/// [
+/// builds the internal symbol name for a test function from suite and name.
 #define _f(_suite, _name)                                                      \
 	_suite ## _ ## _name ## _func
 
+/// builds the internal symbol name for a test instance from suite and name.
 #define _t(_suite, _name)                                                      \
 	_ ## _suite ## _ ## _name ## _test
 
+/// builds the internal symbol name for a test reference from suite and name.
 #define _r(_suite, _name)                                                      \
 	_ ## _suite ## _ ## _name ## _ref
-/// ]
 
 /// places the cairo test '_name' reference into the cairo section and points it
 /// at the '_value' that is a test object which makes the test discoverable by a
@@ -192,11 +190,11 @@ struct _cairo_test_s {
 	static void _f(_suite, _name)(_cairo_unused _cairo_test_s* const _test);   \
 	                                                                           \
 	static _cairo_test_s _t(_suite, _name) = {                                 \
-		.func           = _f(_suite, _name) ,                                  \
-		.suite          = #_suite           ,                                  \
-		.name           = #_name            ,                                  \
-		.suite_and_name = #_suite "." #_name,                                  \
-		.status         = _cairo_test_pass  ,                                  \
+		.func           = _f(_suite, _name)      ,                             \
+		.suite          = #_suite                ,                             \
+		.name           = #_name                 ,                             \
+		.suite_and_name = #_suite "." #_name     ,                             \
+		.status         = _cairo_test_status_fail,                             \
 		.fail = {                                                              \
 			.lhs  = NULL     ,                                                 \
 			.rhs  = NULL     ,                                                 \
@@ -218,7 +216,7 @@ struct _cairo_test_s {
 /// the elapsed duration. the test's body sets its status to fail or skip by the
 /// the cairo_assert*/cairo_test_skip macros.
 _cairo_func void _cairo_test_run(_cairo_test_s* const test) {
-	test->status = _cairo_test_pass;
+	test->status = _cairo_test_status_pass;
 	const double begin = _cairo_time_now();
 	test->func(test);
 	test->elapsed = _cairo_time_now() - begin;
@@ -247,162 +245,177 @@ _cairo_func bool _cairo_test_match(const _cairo_test_s* const test,
 }
 
 // todo: document!
-_cairo_func void _cairo_test_report(const _cairo_test_s* const test) {
+_cairo_func void _cairo_test_report(const _cairo_test_s* const test,
+									const bool verbose) {
+	if (verbose) {
 #ifndef cairo_tab_width
 #	define cairo_tab_width 4
 #endif
 #define _cairo_line_length (256 + (32 * cairo_tab_width))
 #define _cairo_max_lines 16
 
-	char   lines[_cairo_max_lines][_cairo_line_length];
-	int    numbers[_cairo_max_lines];
-	size_t mark_start[_cairo_max_lines];
-	size_t mark_end[_cairo_max_lines];
-	int    have   = 0;
-	size_t column = 1;
+		char   lines[_cairo_max_lines][_cairo_line_length];
+		int    numbers[_cairo_max_lines];
+		size_t mark_start[_cairo_max_lines];
+		size_t mark_end[_cairo_max_lines];
+		int    have   = 0;
+		size_t column = 1;
 
-	FILE* const src = fopen(test->fail.file, "rt");
-	if (src != NULL) {
-		const int  target = (int)test->fail.line;
-		const int  first  = (target > 1) ? (target - 1) : 1;
-		char raw[_cairo_line_length];
-		int  no      = 0;
-		int  depth   = 0;
-		char quote   = '\0';
-		bool started = false;
-		bool done    = false;
-		int  trailing = 0;
+		FILE* const src = fopen(test->fail.file, "rt");
+		if (src != NULL) {
+			const int  target = (int)test->fail.line;
+			const int  first  = (target > 1) ? (target - 1) : 1;
+			char raw[_cairo_line_length];
+			int  no      = 0;
+			int  depth   = 0;
+			char quote   = '\0';
+			bool started = false;
+			bool done    = false;
+			int  trailing = 0;
 
-		while ((have < _cairo_max_lines) && (fgets(raw, sizeof(raw), src) != NULL)) {
-			++no;
-			if (no < first) { continue; }
+			while ((have < _cairo_max_lines) && (fgets(raw, sizeof(raw), src) != NULL)) {
+				++no;
+				if (no < first) { continue; }
 
-			char* const dst = lines[have];
-			size_t count = 0;
-			for (const char* s = raw; (*s != '\0') && ((count + 1) < _cairo_line_length); ++s) {
-				if (('\n' == *s) || ('\r' == *s)) { break; }
-				if ('\t' == *s) {
-					const size_t padding = cairo_tab_width - (count % cairo_tab_width);
-					for (size_t _ = 0; (_ < padding) && ((count + 1) < _cairo_line_length); ++_) {
-						dst[count++] = ' ';
-					}
-				}
-				else {
-					dst[count++] = *s;
-				}
-			}
-			dst[count] = '\0';
-
-			numbers[have]   = no;
-			mark_start[have] = 0;
-			mark_end[have]   = 0;
-
-			if ((no >= target) && !done) {
-				const char* const line = lines[have];
-				const char* p = line;
-
-				if ((no == target) && !started) {
-					const char* const call = strstr(line, "cairo_assert_");
-					if (call != NULL) {
-						p = call;
-						while ((*p != '\0') && (*p != '(')) { ++p; }
-					}
-				}
-
-				size_t line_open = (size_t)-1;
-				for (; *p != '\0'; ++p) {
-					const char c = *p;
-					if (quote != '\0') {
-						if ((c == '\\') && (p[1] != '\0')) { ++p; continue; }
-						if (c == quote) { quote = '\0'; }
-						continue;
-					}
-					if ((c == '"') || (c == '\'')) { quote = c; continue; }
-
-					if (c == '(') {
-						if (!started) { started = true; line_open = (size_t)(p - line); }
-						++depth;
-					}
-					else if (c == ')') {
-						--depth;
-						if (0 == depth) {
-							size_t s = (line_open != (size_t)-1) ? (line_open + 1) : 0;
-							size_t e = (size_t)(p - line);
-							while ((s < e) && (line[s] == ' ')) { ++s; }
-							while ((e > s) && (line[e - 1] == ' ')) { --e; }
-							mark_start[have] = s;
-							mark_end[have]   = e;
-							done = true;
-							break;
+				char* const dst = lines[have];
+				size_t count = 0;
+				for (const char* s = raw; (*s != '\0') && ((count + 1) < _cairo_line_length); ++s) {
+					if (('\n' == *s) || ('\r' == *s)) { break; }
+					if ('\t' == *s) {
+						const size_t padding = cairo_tab_width - (count % cairo_tab_width);
+						for (size_t _ = 0; (_ < padding) && ((count + 1) < _cairo_line_length); ++_) {
+							dst[count++] = ' ';
 						}
 					}
+					else {
+						dst[count++] = *s;
+					}
+				}
+				dst[count] = '\0';
+
+				numbers[have]   = no;
+				mark_start[have] = 0;
+				mark_end[have]   = 0;
+
+				if ((no >= target) && !done) {
+					const char* const line = lines[have];
+					const char* p = line;
+
+					if ((no == target) && !started) {
+						const char* const call = strstr(line, "cairo_assert_");
+						if (call != NULL) {
+							p = call;
+							while ((*p != '\0') && (*p != '(')) { ++p; }
+						}
+					}
+
+					size_t line_open = (size_t)-1;
+					for (; *p != '\0'; ++p) {
+						const char c = *p;
+						if (quote != '\0') {
+							if ((c == '\\') && (p[1] != '\0')) { ++p; continue; }
+							if (c == quote) { quote = '\0'; }
+							continue;
+						}
+						if ((c == '"') || (c == '\'')) { quote = c; continue; }
+
+						if (c == '(') {
+							if (!started) { started = true; line_open = (size_t)(p - line); }
+							++depth;
+						}
+						else if (c == ')') {
+							--depth;
+							if (0 == depth) {
+								size_t s = (line_open != (size_t)-1) ? (line_open + 1) : 0;
+								size_t e = (size_t)(p - line);
+								while ((s < e) && (line[s] == ' ')) { ++s; }
+								while ((e > s) && (line[e - 1] == ' ')) { --e; }
+								mark_start[have] = s;
+								mark_end[have]   = e;
+								done = true;
+								break;
+							}
+						}
+					}
+
+					if (!done) {
+						size_t s = (line_open != (size_t)-1) ? (line_open + 1) : 0;
+						size_t e = strlen(line);
+						if (line_open == (size_t)-1) { while (line[s] == ' ') { ++s; } }
+						while ((e > s) && (line[e - 1] == ' ')) { --e; }
+						mark_start[have] = s;
+						mark_end[have]   = e;
+					}
+
+					if (mark_end[have] > mark_start[have]) { column = mark_start[have] + 1; }
 				}
 
-				if (!done) {
-					size_t s = (line_open != (size_t)-1) ? (line_open + 1) : 0;
-					size_t e = strlen(line);
-					if (line_open == (size_t)-1) { while (line[s] == ' ') { ++s; } }
-					while ((e > s) && (line[e - 1] == ' ')) { --e; }
-					mark_start[have] = s;
-					mark_end[have]   = e;
-				}
-
-				if (mark_end[have] > mark_start[have]) { column = mark_start[have] + 1; }
+				++have;
+				if (done && (trailing++ > 0)) { break; }
 			}
-
-			++have;
-			if (done && (trailing++ > 0)) { break; }
+			(void)fclose(src);
 		}
-		(void)fclose(src);
-	}
 
-	if (test->fail.op != NULL) {
-		(void)printf("\n%s:%zu:%zu: %s failed: %s %s %s\n",
-			test->fail.file, test->fail.line, column, test->suite_and_name,
-			test->fail.lhs, test->fail.op, test->fail.rhs);
+		if (test->fail.op != NULL) {
+			(void)printf("\n%s:%zu:%zu: %s failed: %s %s %s\n",
+				test->fail.file, test->fail.line, column, test->suite_and_name,
+				test->fail.lhs, test->fail.op, test->fail.rhs);
+		}
+		else {
+			(void)printf("\n%s:%zu:%zu: %s failed: %s\n",
+				test->fail.file, test->fail.line, column, test->suite_and_name,
+				(test->fail.lhs != NULL) ? test->fail.lhs : "assertion failed");
+		}
+
+		for (int i = 0; i < have; ++i) {
+			(void)printf("  %4d | %s\n", numbers[i], lines[i]);
+			if (mark_end[i] <= mark_start[i]) continue;
+			(void)printf("       | ");
+			for (size_t c = 0; c < mark_start[i]; ++c) (void)putchar(' ');
+			(void)putchar('^');
+			for (size_t c = mark_start[i] + 1; c < mark_end[i]; ++c) (void)putchar('~');
+			(void)putchar('\n');
+		}
+
+		(void)printf("       |\n");
+		if (test->fail.op != NULL) {
+			(void)printf("       = left:  %s\n", test->fail.lhsb);
+			(void)printf("       = right: %s\n", test->fail.rhsb);
+		}
+		(void)printf("       (%s)\n", _cairo_format_time(test->elapsed));
 	}
 	else {
-		(void)printf("\n%s:%zu:%zu: %s failed: %s\n",
-			test->fail.file, test->fail.line, column, test->suite_and_name,
-			(test->fail.lhs != NULL) ? test->fail.lhs : "assertion failed");
+		if (test->fail.op != NULL) {
+			(void)printf("\n%s:%zu: %s failed: %s %s %s\n",
+				test->fail.file, test->fail.line, test->suite_and_name,
+				test->fail.lhs, test->fail.op, test->fail.rhs);
+		}
+		else {
+			(void)printf("\n%s:%zu: %s failed: %s\n",
+				test->fail.file, test->fail.line, test->suite_and_name,
+				(test->fail.lhs != NULL) ? test->fail.lhs : "assertion failed");
+		}
 	}
-
-	for (int i = 0; i < have; ++i) {
-		(void)printf("  %4d | %s\n", numbers[i], lines[i]);
-		if (mark_end[i] <= mark_start[i]) continue;
-		(void)printf("       | ");
-		for (size_t c = 0; c < mark_start[i]; ++c) (void)putchar(' ');
-		(void)putchar('^');
-		for (size_t c = mark_start[i] + 1; c < mark_end[i]; ++c) (void)putchar('~');
-		(void)putchar('\n');
-	}
-
-	(void)printf("       |\n");
-	if (test->fail.op != NULL) {
-		(void)printf("       = left:  %s\n", test->fail.lhsb);
-		(void)printf("       = right: %s\n", test->fail.rhsb);
-	}
-	(void)printf("       (%s)\n", _cairo_format_time(test->elapsed));
 }
 
 /// skips the current test from inside its body. only valid inside a test's body
 /// (it uses the hidden '_test' handle and returns from the test function).
 #define cairo_test_skip() do {                                                 \
-		_test->status = _cairo_test_skip;                                      \
+		_test->status = _cairo_test_status_skip;                               \
 		return;                                                                \
 	} while (0)
 
 /// records a failure into the '_test' handle: sets the stringified operands and
 /// operator and source location, and clears value buffers.
 #define _cairo_record_fail(_lhs, _rhs, _op, _file, _line) do {                 \
-		_test->status       = _cairo_test_fail;                                \
-		_test->fail.lhs     = _lhs            ;                                \
-		_test->fail.rhs     = _rhs            ;                                \
-		_test->fail.op      = _op             ;                                \
-		_test->fail.file    = _file           ;                                \
-		_test->fail.line    = (size_t)(_line) ;                                \
-		_test->fail.lhsb[0] = '\0'            ;                                \
-		_test->fail.rhsb[0] = '\0'            ;                                \
+		_test->status       = _cairo_test_status_fail;                         \
+		_test->fail.lhs     = _lhs                   ;                         \
+		_test->fail.rhs     = _rhs                   ;                         \
+		_test->fail.op      = _op                    ;                         \
+		_test->fail.file    = _file                  ;                         \
+		_test->fail.line    = (size_t)(_line)        ;                         \
+		_test->fail.lhsb[0] = '\0'                   ;                         \
+		_test->fail.rhsb[0] = '\0'                   ;                         \
 	} while (0)
 
 // todo: document!
@@ -637,27 +650,28 @@ _cairo_func void _cairo_format_pointer(char* const buffer, const size_t size,
 		cairo_assert_nr(_lhs, _rhs, 1e-6);                                     \
 	} while (0)
 
-/// parse-result of the command line and ordered so the enumerator value doubles
+/// parse-status of the command line and ordered so the enumerator value doubles
 /// as an exit code: 'exit' for a clean, early stop, 'go_on' to keep the program
 /// running, 'error' for a usage error.
 /// note: keep this order, 'cairo_tests_run' returns '(int)args._status' directly
 /// for the non-'go_on' cases, so reordering silently changes exit code mapping.
 typedef enum {
-	_cairo_args_exit ,
-	_cairo_args_go_on,
-	_cairo_args_error,
-} _cairo_args_e;
+	_cairo_args_status_exit ,
+	_cairo_args_status_go_on,
+	_cairo_args_status_error,
+} _cairo_args_status_e;
 
 /// parsed command-line options configuring a tests run: which tests to include,
 /// which to exclude, how many times to repeat the tests set, and what exit code
 /// to use when tests fail. the 'status' reports how parsing ended.
 typedef struct {
-	_cairo_args_e _status;
-	const char*   pattern;
-	const char*   exclude;
-	size_t        repeat ;
-	size_t        ecode  ;
-	bool          list   ;
+	_cairo_args_status_e _status;
+	const char*          pattern;
+	const char*          exclude;
+	size_t               repeat ;
+	bool                 verbose;
+	size_t               ecode  ;
+	bool                 list   ;
 } cairo_args_s;
 
 /// returns whether the provided arg equals either the brief (e.g. '-e') or full
@@ -696,6 +710,7 @@ _cairo_func void _cairo_args_usage(FILE* const stream,
 		"    -p, --pattern <glob>  run only tests whose suite.name matches.\n"
 		"    -e, --exclude <glob>  skip tests whose suite.name matches.\n"
 		"    -r, --repeat <n>      run selected tests n times.\n"
+		"    -v, --verbose         enable/disable verbose output.\n"
 		"    -x, --ecode <n>       exit code to use when tests fail.\n"
 		"    -l, --list            print all collected tests and exit.\n"
 		"    -h, --help            print this message and exit.\n"
@@ -722,12 +737,13 @@ _cairo_func void _cairo_args_report(const char* const program,
 /// 'cairo_tests_run' to run with defaults.
 _cairo_func cairo_args_s cairo_args_default(void) {
 	return (const cairo_args_s) {
-		._status = _cairo_args_go_on,
-		.pattern = "*"              ,
-		.exclude = NULL             ,
-		.repeat  = 1                ,
-		.ecode   = 1                ,
-		.list    = false            ,
+		._status = _cairo_args_status_go_on,
+		.pattern = "*"                     ,
+		.exclude = NULL                    ,
+		.repeat  = 1                       ,
+		.verbose = false                   ,
+		.ecode   = 1                       ,
+		.list    = false                   ,
 	};
 }
 
@@ -738,26 +754,26 @@ _cairo_func cairo_args_s cairo_args_default(void) {
 ///     return cairo_tests_run(cairo_args_new(argc, argv));
 /// }
 _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
-	size_t index = 0;
-	const size_t args_count = (size_t)argc;
-	const char* program = argv[index++];
-	cairo_args_s args = cairo_args_default();
+	size_t       index   = 0                   ;
+	const size_t count   = (size_t)argc        ;
+	const char*  program = argv[index++]       ;
+	cairo_args_s args    = cairo_args_default();
 
-	for (; index < args_count; ++index) {
+	for (; index < count; ++index) {
 		const char* const arg  = argv[index];
 		const size_t nindex = index + 1;
-		const char* const next = nindex < args_count ? argv[nindex] : NULL;
+		const char* const next = nindex < count ? argv[nindex] : NULL;
 
 		if (_cairo_args_is(arg, "-h", "--help")) {
 			_cairo_args_usage(stdout, program);
-			args._status = _cairo_args_exit;
+			args._status = _cairo_args_status_exit;
 			break;
 		}
 
 		if (_cairo_args_is(arg, "-p", "--pattern")) {
 			if (NULL == next) {
 				_cairo_args_report(program, "missing value for", arg, NULL);
-				args._status = _cairo_args_error;
+				args._status = _cairo_args_status_error;
 				break;
 			}
 
@@ -767,7 +783,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		else if (_cairo_args_is(arg, "-e", "--exclude")) {
 			if (NULL == next) {
 				_cairo_args_report(program, "missing value for", arg, NULL);
-				args._status = _cairo_args_error;
+				args._status = _cairo_args_status_error;
 				break;
 			}
 
@@ -777,7 +793,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		else if (_cairo_args_is(arg, "-r", "--repeat")) {
 			if (NULL == next) {
 				_cairo_args_report(program, "missing value for", arg, NULL);
-				args._status = _cairo_args_error;
+				args._status = _cairo_args_status_error;
 				break;
 			}
 
@@ -785,16 +801,20 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 				_cairo_args_report(
 					program, "expected a positive number for", arg, next
 				);
-				args._status = _cairo_args_error;
+				args._status = _cairo_args_status_error;
 				break;
 			}
 
 			++index;
 		}
+		else if (_cairo_args_is(arg, "-v", "--verbose")) {
+			// todo: maybe throw an error on redefinition?
+			args.verbose = true;
+		}
 		else if (_cairo_args_is(arg, "-x", "--ecode")) {
 			if (NULL == next) {
 				_cairo_args_report(program, "missing value for", arg, NULL);
-				args._status = _cairo_args_error;
+				args._status = _cairo_args_status_error;
 				break;
 			}
 
@@ -802,7 +822,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 				_cairo_args_report(
 					program, "expected a positive number for", arg, next
 				);
-				args._status = _cairo_args_error;
+				args._status = _cairo_args_status_error;
 				break;
 			}
 
@@ -814,7 +834,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		}
 		else {
 			_cairo_args_report(program, "unknown option", arg, NULL);
-			args._status = _cairo_args_error;
+			args._status = _cairo_args_status_error;
 			break;
 		}
 	}
@@ -906,10 +926,10 @@ _cairo_func void _cairo_tests_execute(_cairo_tests_s* const tests) {
 		_cairo_test_run(test);
 		// note: unrunned test is an actual state and should be ignored as it is
 		// reserved for internal workings of this project.
-		tests->passed  += (_cairo_test_pass == test->status);
-		tests->failed  += (_cairo_test_fail == test->status);
-		tests->skipped += (_cairo_test_skip == test->status);
-		tests->elapsed += test->elapsed                     ;
+		tests->passed  += (_cairo_test_status_pass == test->status);
+		tests->failed  += (_cairo_test_status_fail == test->status);
+		tests->skipped += (_cairo_test_status_skip == test->status);
+		tests->elapsed += test->elapsed                            ;
 	}
 }
 
@@ -937,8 +957,8 @@ _cairo_func void _cairo_tests_report_suite(const _cairo_tests_s* const tests) {
 			}
 
 			elapsed += test->elapsed;
-			const bool passed = _cairo_test_pass == test->status;
-			const bool failed = _cairo_test_fail == test->status;
+			const bool passed = _cairo_test_status_pass == test->status;
+			const bool failed = _cairo_test_status_fail == test->status;
 			(void)printf("%s", passed ? "." : (failed ? "F" : "S"));
 			(void)fflush(stdout);
 		}
@@ -956,8 +976,8 @@ _cairo_func void _cairo_tests_report_tests(const _cairo_tests_s* const tests) {
 			if (NULL == test)     continue;
 			if (!test->shall_run) continue;
 
-			if (_cairo_test_fail == test->status) {
-				_cairo_test_report(test);
+			if (_cairo_test_status_fail == test->status) {
+				_cairo_test_report(test, tests->args->verbose);
 			}
 		}
 
@@ -983,7 +1003,7 @@ _cairo_func void _cairo_tests_report(const _cairo_tests_s* const tests) {
 /// the selected tests 'args.repeat' times, returning 1 if any run had a failure
 /// and 0 if all passed. with no tests at all, returns 0.
 _cairo_func int cairo_tests_run(const cairo_args_s args) {
-	if (args._status != _cairo_args_go_on) return (int)args._status;
+	if (args._status != _cairo_args_status_go_on) return (int)args._status;
 	_cairo_tests_s tests = _cairo_tests_new(&args);
 	if (0 == tests.count) return 0;
 
@@ -1037,6 +1057,7 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
+///     vX.X.X (xxxx-xx-xx) add verbosity mechanism and cli --verbose flag.
 ///     v1.0.0 (2026-07-28) first release.
 /// 
 /// Copyright (c) 2026 yorissu
