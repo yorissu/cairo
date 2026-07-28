@@ -4,6 +4,7 @@ project(cairo C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+
 set(CAIRO_FLAGS -Wall -Wextra -Werror -Wpedantic
 	-Wshadow -Wundef -Wfloat-equal -Wdouble-promotion -Wformat=2
 	-Wconversion -Wsign-conversion -Wcast-qual -Wcast-align=strict
@@ -13,26 +14,50 @@ set(CAIRO_FLAGS -Wall -Wextra -Werror -Wpedantic
 	-Wduplicated-cond -Wduplicated-branches -Wlogical-op
 )
 
-file(GLOB entries RELATIVE ${CMAKE_SOURCE_DIR}/examples ${CMAKE_SOURCE_DIR}/examples/*)
+set(run_targets "")
 
-foreach(entry IN LISTS entries)
-	if(NOT IS_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/${entry})
+# Iterate over both target directories
+foreach(subdir IN ITEMS "examples" "tests")
+	set(subdir_path "${CMAKE_SOURCE_DIR}/${subdir}")
+	
+	if(NOT IS_DIRECTORY ${subdir_path})
 		continue()
 	endif()
 
-	file(GLOB sources ${CMAKE_SOURCE_DIR}/examples/${entry}/*.c)
-	add_executable(${entry}_tests ${sources})
-	target_include_directories(${entry}_tests PRIVATE ${CMAKE_SOURCE_DIR})
-	target_compile_options(${entry}_tests PRIVATE ${CAIRO_FLAGS})
-	target_link_libraries(${entry}_tests PRIVATE m)
-	add_custom_target(run_${entry}
-		COMMAND ${entry}_tests
-		DEPENDS ${entry}_tests
-		WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/examples/${entry}
-		USES_TERMINAL
-	)
+	file(GLOB entries RELATIVE ${subdir_path} ${subdir_path}/*)
 
-	list(APPEND run_targets run_${entry})
+	foreach(entry IN LISTS entries)
+		set(entry_path "${subdir_path}/${entry}")
+		
+		if(NOT IS_DIRECTORY ${entry_path})
+			continue()
+		endif()
+
+		file(GLOB sources ${entry_path}/*.c)
+		if(NOT sources)
+			continue()
+		endif()
+
+		# Prepend the subdirectory to avoid target collisions (e.g. examples_demo_tests vs tests_demo_tests)
+		set(target_name "${subdir}_${entry}_tests")
+		set(run_target "${subdir}_run_${entry}")
+
+		add_executable(${target_name} ${sources})
+		target_include_directories(${target_name} PRIVATE ${CMAKE_SOURCE_DIR})
+		target_compile_options(${target_name} PRIVATE ${CAIRO_FLAGS})
+		target_link_libraries(${target_name} PRIVATE m)
+		
+		add_custom_target(${run_target}
+			COMMAND ${target_name}
+			DEPENDS ${target_name}
+			WORKING_DIRECTORY ${entry_path}
+			USES_TERMINAL
+		)
+
+		list(APPEND run_targets ${run_target})
+	endforeach()
 endforeach()
 
-add_custom_target(run DEPENDS ${run_targets})
+if(run_targets)
+	add_custom_target(run DEPENDS ${run_targets})
+endif()
