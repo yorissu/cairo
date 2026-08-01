@@ -1,4 +1,89 @@
 
+/// 
+/// cairo is a small, single-header unit test framework for c. drop cairo.h into
+/// a tests c file, define tests with 'cairo_test_new(suite, name)', assert with
+/// the 'cairo_assert_*' family, and run 'cairo_tests_run' in the main function.
+/// there is no tests registration list to maintain and no library to link since
+/// every test records itself into a dedicated linker section that the framework
+/// walks at start up. the framework uses the section trick to stay declarative,
+/// does no heap allocations, and aims to build cleanly, identically across many
+/// toolchains such as clang, gcc, and msvc. tests are sorted, and can, also, be
+/// filtered, shuffled, and repeated from the command line or the main function,
+/// failures report the offending source location, with the compared values, and
+/// nearly every libc call it makes can be overridden with 'cairo_*' macros.
+/// 
+/// usage example:
+/// {
+/// #define cairo_supress_sign_compare_warnings
+/// #define cairo_disable_verbose_output
+/// #include "cairo.h"
+/// 
+/// cairo_test_new(demo, test01) {
+///     cairo_test_skip();
+/// }
+/// 
+/// cairo_test_new(demo, test02) {
+///     cairo_assert_true(true);
+/// }
+/// 
+/// cairo_test_new(demo, test03) {
+///     cairo_assert_false(false);
+/// }
+/// 
+/// cairo_test_new(demo, test04) {
+///     cairo_assert_eq(0, 0);
+/// }
+/// 
+/// cairo_test_new(demo, test05) {
+///     cairo_assert_neq(0, 1);
+/// }
+/// 
+/// cairo_test_new(demo, test06) {
+///     cairo_assert_gt(1, 0);
+/// }
+/// 
+/// cairo_test_new(demo, test07) {
+///     cairo_assert_ge(1, 1);
+/// }
+/// 
+/// cairo_test_new(demo, test08) {
+///     cairo_assert_lt(0, 1);
+/// }
+/// 
+/// cairo_test_new(demo, test09) {
+///     cairo_assert_le(1, 1);
+/// }
+/// 
+/// cairo_test_new(demo, test10) {
+///     cairo_assert_nr(0, 1e-5, 1e-6);
+/// }
+/// 
+/// cairo_test_new(demo, test11) {
+///     cairo_assert_nreq(0, 1e-5);
+/// }
+/// 
+/// cairo_test_new(demo, test12) {
+///     cairo_assert_streq("foo", "foo");
+/// }
+/// 
+/// cairo_test_new(demo, test13) {
+///     cairo_assert_strneq("foo", "bar");
+/// }
+/// 
+/// int main(const int argc, const char* argv[]) {
+///     {  // simple run
+///         return cairo_tests_run(cairo_args_new(argc, argv));
+///     }
+/// 
+///     {  // complex run
+///         cairo_args_s args = cairo_args_new(argc, argv);
+///         args.pattern = "demo.test01:demo.test1*";  // or pass these via cli.
+///         return cairo_tests_run(args);
+///     }
+/// }
+/// }
+/// 
+
 #ifndef __cairo_h__
 #define __cairo_h__
 
@@ -1406,6 +1491,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 #endif
 
 /// todo: implement naming style macros for public api names.
+
+/// todo: introduce deprecation mechanism and macros.
 
 #endif
 
