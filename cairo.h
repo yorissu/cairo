@@ -6,93 +6,109 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/// override hook for 'SIZE_MAX', the largest value a 'size_t' can hold. used to
+/// reject parsed numeric cli args that would not fit in a 'size_t'.
 #ifndef cairo_size_max
 #	include <stddef.h>
-	/// todo: document!
 #	define cairo_size_max SIZE_MAX
 #endif
 
+/// override hook for 'strcmp', lexicographic c-string comparison. used to order
+/// tests by suite/name and to match option and suite spellings.
 #ifndef cairo_strcmp
 #	include <string.h>
-	/// todo: document!
 #	define cairo_strcmp strcmp
 #endif
 
+/// override hook for 'strtoul', parses an unsigned long from text in given base
+/// (base 10 is used for now). used to read the numeric '--repeat' and '--ecode'
+/// cli values.
 #ifndef cairo_strtoul
 #	include <stdlib.h>
-	/// todo: document!
 #	define cairo_strtoul strtoul
 #endif
 
+/// override hook for 'qsort', in-place array sort. used to order collected test
+/// references by suite and name before running them.
 #ifndef cairo_qsort
 #	include <stdlib.h>
-	/// todo: document!
 #	define cairo_qsort qsort
 #endif
 
+/// override hook for 'ULONG_MAX', the largest value an unsigned long stores. it
+/// is used to guard the 'size_t' range check when parsing numeric cli args.
 #ifndef cairo_ulong_max
 #	include <limits.h>
-	/// todo: document!
 #	define cairo_ulong_max ULONG_MAX
 #endif
 
+/// override hook for 'snprintf', bounded formatted write into a buffer. used to
+/// stringify operand values and format elapsed durations.
 #ifndef cairo_snprintf
 #	include <stdio.h>
-	/// todo: document!
 #	define cairo_snprintf snprintf
 #endif
 
+/// override hook for 'fprintf', formatted write to a stream. it's used to print
+/// usage text and cli argument errors.
 #ifndef cairo_fprintf
 #	include <stdio.h>
-	/// todo: document!
 #	define cairo_fprintf fprintf
 #endif
 
+/// override hook for 'printf', formatted write to stdout. used for all of tests
+/// listing, progress, failure, and summary output.
 #ifndef cairo_printf
 #	include <stdio.h>
-	/// todo: document!
 #	define cairo_printf printf
 #endif
 
+/// override hook for 'fflush', flushes a stream's buffer. it's used to put each
+/// progress character to cairo_stdout as tests run.
 #ifndef cairo_fflush
 #	include <stdio.h>
-	/// todo: document!
 #	define cairo_fflush fflush
 #endif
 
+/// override hook for 'stdout', the standard output stream. it is used in usage,
+/// listing, and report output.
 #ifndef cairo_stdout
 #	include <stdio.h>
-	/// todo: document!
 #	define cairo_stdout stdout
 #endif
 
+/// override hook for 'stderr', the standard error stream. it's used for command
+/// line argument related error messages.
 #ifndef cairo_stderr
 #	include <stdio.h>
-	/// todo: document!
 #	define cairo_stderr stderr
 #endif
 
+/// override hook for 'errno', the c error indicator. checked for 'ERANGE' after
+/// 'cairo_strtoul' to detect numeric overflow.
 #ifndef cairo_errno
 #	include <errno.h>
-	/// todo: document!
 #	define cairo_errno errno
 #endif
 
+/// override hook for 'clock', returns elapsed processor/clock ticks. it is used
+/// as the raw time source for measuring test durations.
 #ifndef cairo_clock
 #	include <time.h>
-	/// todo: document!
 #	define cairo_clock clock
 #endif
 
+/// override hook for 'CLOCKS_PER_SEC', ticks per second for 'cairo_clock'. used
+/// to convert raw clock ticks into seconds.
 #ifndef cairo_clocks_per_sec
 #	include <time.h>
-	/// todo: document!
 #	define cairo_clocks_per_sec CLOCKS_PER_SEC
 #endif
 
+/// override hook for 'fabs', absolute value of a provided double value. used to
+/// compute the magnitude of the difference in the near/loose float assertions.
 #ifndef cairo_fabs
 #	include <math.h>
-	/// todo: document!
 #	define cairo_fabs fabs
 #endif
 
@@ -118,28 +134,35 @@
 #	define _cairo_retain
 #endif
 
-/// temporarily disables compiler warnings related to signed and unsigned values
-/// comparisons within the enclosed assert code block. this solution allows safe
-/// type-generic comparisons without generating warnings on mismatching literals
-/// signedness.
-/// note: this also silences valid signedness warnings and should be resolved in
-/// a better way.
-#if defined(__GNUC__) || defined(__clang__)
-#	define _cairo_diag_nosign(_body) do {                                      \
-			_Pragma("GCC diagnostic push")                                     \
-			_Pragma("GCC diagnostic ignored \"-Wsign-compare\"")               \
-			_body                                                              \
-			_Pragma("GCC diagnostic pop")                                      \
-		} while (0)
-#elif defined(_MSC_VER)
-#	define _cairo_diag_nosign(_body) do {                                      \
-			__pragma(warning(push))                                            \
-			__pragma(warning(disable: 4018 4389))                              \
-			_body                                                              \
-			__pragma(warning(pop))                                             \
-		} while (0)
+/// wraps an assert '_body' so that signed/unsigned comparison warnings are kept
+/// quiet for just that block, letting type-generic asserts compare values whose
+/// literals differ in signedness without noise. the suppression is opt-in, when
+/// 'cairo_supress_sign_compare_warnings' is defined the gcc, clang, and/or msvc
+/// pragma pair is emitted around '_body'; otherwise, and on unknown toolchains,
+/// '_body' is emitted unchanged inside a plain do/while.
+#ifdef cairo_supress_sign_compare_warnings
+#	if defined(__GNUC__) || defined(__clang__)
+#		define _cairo_diag_nosign(_body) do {                                  \
+				_Pragma("GCC diagnostic push")                                 \
+				_Pragma("GCC diagnostic ignored \"-Wsign-compare\"")           \
+				_body                                                          \
+				_Pragma("GCC diagnostic pop")                                  \
+			} while (0)
+#	elif defined(_MSC_VER)
+#		define _cairo_diag_nosign(_body) do {                                  \
+				__pragma(warning(push))                                        \
+				__pragma(warning(disable: 4018 4389))                          \
+				_body                                                          \
+				__pragma(warning(pop))                                         \
+			} while (0)
+#	else
+#		define _cairo_diag_nosign(_body) do {                                  \
+				_body                                                          \
+			} while (0)
+#	endif
 #else
 #	define _cairo_diag_nosign(_body) do {                                      \
+			_body                                                              \
 		} while (0)
 #endif
 
@@ -1236,7 +1259,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx) add overridable c stdlib function wrappers.
+///     vX.X.X (xxxx-xx-xx) add cairo_supress_sign_compare_warnings setting.
+///                         add overridable c stdlib function wrappers.
 ///                         fix asserts evaluating arguments twice in tests.
 ///                         add verbosity mechanism and cli --verbose flag.
 ///     v1.0.0 (2026-07-28) first release.
