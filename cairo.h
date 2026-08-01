@@ -55,11 +55,11 @@
 /// }
 /// 
 /// cairo_test_new(demo, test10) {
-///     cairo_assert_nr(0, 1e-5, 1e-6);
+///     cairo_assert_nr(0, 1e-7, 1e-6);
 /// }
 /// 
 /// cairo_test_new(demo, test11) {
-///     cairo_assert_nreq(0, 1e-5);
+///     cairo_assert_nreq(0, 1e-7);
 /// }
 /// 
 /// cairo_test_new(demo, test12) {
@@ -90,6 +90,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#ifndef _cairo_version
+#	define _cairo_version "1.1.0"
+#endif
 
 /// override hook for 'SIZE_MAX', the largest value a 'size_t' can hold. used to
 /// reject parsed numeric cli args that would not fit in a 'size_t'.
@@ -1095,14 +1099,22 @@ _cairo_func void _cairo_args_usage(FILE* const stream,
 		"  -e, --exclude <glob>  skip tests whose suite.name matches.\n"
 		"  -s, --shuffle <seed>  deterministic shuffle with a provided seed.\n"
 		"  -r, --repeat <n>      run selected tests n times.\n"
-		"  -v, --verbose         enable/disable verbose output.\n"
+		"  -V, --verbose         enable/disable verbose output.\n"
 		"  -x, --ecode <n>       exit code to use when tests fail.\n"
 		"  -l, --list            print all collected tests and exit.\n"
+		"  -v, --version         print the version of the cairo.\n"
 		"  -h, --help            print this message and exit.\n"
 		"\n"
 		"globs accept *, ?, and : and are matched against \'suite.name\'.\n",
 		program
 	);
+}
+
+/// prints cairo's version string for 'program' to the provided 'stream', in the
+/// form "<program> <version>" (e.g. after the '-v'/'--version' flag).
+_cairo_func void _cairo_args_version(FILE* const stream,
+									 const char* const program) {
+	(void)cairo_fprintf(stream, "%s v%s\n", program, _cairo_version);
 }
 
 /// prints a one-liner error ('reason', offending 'option', optional 'value') to
@@ -1152,6 +1164,12 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 
 		if (_cairo_args_is(arg, "-h", "--help")) {
 			_cairo_args_usage(cairo_stdout, program);
+			args._status = _cairo_args_status_exit;
+			break;
+		}
+
+		if (_cairo_args_is(arg, "-v", "--version")) {
+			_cairo_args_version(cairo_stdout, program);
 			args._status = _cairo_args_status_exit;
 			break;
 		}
@@ -1210,7 +1228,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 
 			++index;
 		}
-		else if (_cairo_args_is(arg, "-v", "--verbose")) {
+		else if (_cairo_args_is(arg, "-V", "--verbose")) {
 			// todo: maybe throw an error on redefinition?
 			args.verbose = true;
 		}
@@ -1467,27 +1485,25 @@ _cairo_func int cairo_tests_run_default(void) {
 _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 #ifdef cairo_enable_prefixless
-#	define supress_sign_compare_warnings cairo_supress_sign_compare_warnings
-#	define disable_verbose_output        cairo_disable_verbose_output
-#	define test_new                      cairo_test_new
-#	define test_skip                     cairo_test_skip
-#	define assert_true                   cairo_assert_true
-#	define assert_false                  cairo_assert_false
-#	define assert_eq                     cairo_assert_eq
-#	define assert_neq                    cairo_assert_neq
-#	define assert_gt                     cairo_assert_gt
-#	define assert_ge                     cairo_assert_ge
-#	define assert_lt                     cairo_assert_lt
-#	define assert_le                     cairo_assert_le
-#	define assert_nr                     cairo_assert_nr
-#	define assert_nreq                   cairo_assert_nreq
-#	define assert_streq                  cairo_assert_streq
-#	define assert_strneq                 cairo_assert_strneq
-#	define args_s                        cairo_args_s
-#	define args_default                  cairo_args_default
-#	define args_new                      cairo_args_new
-#	define tests_run                     cairo_tests_run
-#	define tests_run_default             cairo_tests_run_default
+#	define test_new          cairo_test_new
+#	define test_skip         cairo_test_skip
+#	define assert_true       cairo_assert_true
+#	define assert_false      cairo_assert_false
+#	define assert_eq         cairo_assert_eq
+#	define assert_neq        cairo_assert_neq
+#	define assert_gt         cairo_assert_gt
+#	define assert_ge         cairo_assert_ge
+#	define assert_lt         cairo_assert_lt
+#	define assert_le         cairo_assert_le
+#	define assert_nr         cairo_assert_nr
+#	define assert_nreq       cairo_assert_nreq
+#	define assert_streq      cairo_assert_streq
+#	define assert_strneq     cairo_assert_strneq
+#	define args_s            cairo_args_s
+#	define args_default      cairo_args_default
+#	define args_new          cairo_args_new
+#	define tests_run         cairo_tests_run
+#	define tests_run_default cairo_tests_run_default
 #endif
 
 /// todo: implement naming style macros for public api names.
@@ -1499,6 +1515,7 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 /// 
 /// revision history:
 ///     vX.X.X (xxxx-xx-xx)
+///         change --verbose short flag to -V, add -v/--version flag.
 ///         add cairo_disable_verbose_output setting.
 ///         add cairo_assert_streq/strneq cstrings asserts.
 ///         fix single line suite reporting bug.
