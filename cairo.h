@@ -1223,6 +1223,10 @@ _cairo_func void _cairo_tests_report_suite(const _cairo_tests_s* const tests) {
 			if (!test->shall_run) continue;
 
 			if ((NULL == suite) || (cairo_strcmp(suite, test->suite) != 0)) {
+				if (suite != NULL) {
+					(void)cairo_printf(" (%s)\n", _cairo_format_time(elapsed));
+				}
+
 				suite   = test->suite;
 				elapsed = 0.0        ;
 				(void)cairo_printf("%s ", suite);
@@ -1332,7 +1336,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx) add --shuffle for seeded test order randomization.
+///     vX.X.X (xxxx-xx-xx) fix single line suite reporting bug.
+///                         add --shuffle for seeded test order randomization.
 ///     v1.1.0 (2026-08-01) add ':'-separated glob lists for include and exclude
 ///                         patterns.
 ///                         add cairo_supress_sign_compare_warnings setting.
