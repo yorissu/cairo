@@ -619,6 +619,10 @@ _cairo_func bool _cairo_test_match(const _cairo_test_s* const test,
 // todo: document!
 _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 									const bool verbose) {
+/// compiles out the verbose failure report (source context + carets) so builds
+/// that never use -v/--verbose don't carry the file-reading path. the reporter
+/// then always emits the compact one-line form and the flag becomes a no-op.
+#ifndef cairo_disable_verbose_output
 	if (verbose) {
 #ifndef cairo_tab_width
 #	define cairo_tab_width 4
@@ -636,7 +640,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		FILE* const src = fopen(test->fail.file, "rt");
 		if (src != NULL) {
 			const int  target = (int)test->fail.line;
-			const int  first  = (target > 1) ? (target - 1) : 1;
+			const int  first  = target > 1 ? target - 1 : 1;
 			char raw[_cairo_line_length];
 			int  no      = 0;
 			int  depth   = 0;
@@ -698,7 +702,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 						else if (c == ')') {
 							--depth;
 							if (0 == depth) {
-								size_t s = (line_open != (size_t)-1) ? (line_open + 1) : 0;
+								size_t s = line_open != (size_t)-1 ? line_open + 1 : 0;
 								size_t e = (size_t)(p - line);
 								while ((s < e) && (line[s] == ' ')) { ++s; }
 								while ((e > s) && (line[e - 1] == ' ')) { --e; }
@@ -711,7 +715,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 					}
 
 					if (!done) {
-						size_t s = (line_open != (size_t)-1) ? (line_open + 1) : 0;
+						size_t s = line_open != (size_t)-1 ? line_open + 1 : 0;
 						size_t e = strlen(line);
 						if (line_open == (size_t)-1) { while (line[s] == ' ') { ++s; } }
 						while ((e > s) && (line[e - 1] == ' ')) { --e; }
@@ -736,7 +740,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		else {
 			(void)cairo_printf("\n%s:%zu:%zu: %s failed: %s\n",
 				test->fail.file, test->fail.line, column, test->suite_and_name,
-				(test->fail.lhs != NULL) ? test->fail.lhs : "assertion failed");
+				test->fail.lhs != NULL ? test->fail.lhs : "assertion failed");
 		}
 
 		for (int i = 0; i < have; ++i) {
@@ -756,7 +760,9 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		}
 		(void)cairo_printf("       (%s)\n", _cairo_format_time(test->elapsed));
 	}
-	else {
+	else
+#endif
+	{ (void)verbose;
 		if (test->fail.op != NULL) {
 			(void)cairo_printf("\n%s:%zu: %s failed: %s %s %s\n",
 				test->fail.file, test->fail.line, test->suite_and_name,
@@ -765,7 +771,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		else {
 			(void)cairo_printf("\n%s:%zu: %s failed: %s\n",
 				test->fail.file, test->fail.line, test->suite_and_name,
-				(test->fail.lhs != NULL) ? test->fail.lhs : "assertion failed");
+				test->fail.lhs != NULL ? test->fail.lhs : "assertion failed");
 		}
 	}
 }
@@ -1403,7 +1409,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx) add cairo_assert_streq/strneq cstrings asserts.
+///     vX.X.X (xxxx-xx-xx) add cairo_disable_verbose_output setting.
+///                         add cairo_assert_streq/strneq cstrings asserts.
 ///                         fix single line suite reporting bug.
 ///                         add --shuffle for seeded test order randomization.
 ///     v1.1.0 (2026-08-01) add ':'-separated glob lists for include and exclude
