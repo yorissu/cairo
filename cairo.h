@@ -277,6 +277,16 @@ _cairo_func bool _cairo_get_globs(const char* patterns, const char* const text) 
 	}
 }
 
+/// advances a 64-bit splitmix64 state and returns the next value. a small, self
+/// contained, fully deterministic p-rng so a given seed yields the same shuffle
+/// on every platform, without pulling in 'rand'/'srand' or any global state.
+_cairo_func uint64_t _cairo_random_next(uint64_t* const state) {
+	uint64_t value = (*state += 0x9E3779B97F4A7C15ull);
+	value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9ull;
+	value = (value ^ (value >> 27)) * 0x94D049BB133111EBull;
+	return value ^ (value >> 31);
+}
+
 /// outcome/status of a single test: failed, passed, or explicitly skipped.
 typedef enum {
 	_cairo_test_status_fail,
@@ -887,6 +897,7 @@ typedef struct {
 	_cairo_args_status_e _status;
 	const char*          pattern;
 	const char*          exclude;
+	size_t               shuffle;
 	size_t               repeat ;
 	bool                 verbose;
 	size_t               ecode  ;
@@ -925,13 +936,14 @@ _cairo_func void _cairo_args_usage(FILE* const stream,
 								   const char* const program) {
 	(void)cairo_fprintf(stream,
 		"usage: %s [options]\n"
-		"    -p, --pattern <glob>  run only tests whose suite.name matches.\n"
-		"    -e, --exclude <glob>  skip tests whose suite.name matches.\n"
-		"    -r, --repeat <n>      run selected tests n times.\n"
-		"    -v, --verbose         enable/disable verbose output.\n"
-		"    -x, --ecode <n>       exit code to use when tests fail.\n"
-		"    -l, --list            print all collected tests and exit.\n"
-		"    -h, --help            print this message and exit.\n"
+		"  -p, --pattern <glob>  run only tests whose suite.name matches.\n"
+		"  -e, --exclude <glob>  skip tests whose suite.name matches.\n"
+		"  -s, --shuffle <seed>  deterministic shuffle with a provided seed.\n"
+		"  -r, --repeat <n>      run selected tests n times.\n"
+		"  -v, --verbose         enable/disable verbose output.\n"
+		"  -x, --ecode <n>       exit code to use when tests fail.\n"
+		"  -l, --list            print all collected tests and exit.\n"
+		"  -h, --help            print this message and exit.\n"
 		"\n"
 		"globs accept *, ?, and : and are matched against \'suite.name\'.\n",
 		program
@@ -958,6 +970,7 @@ _cairo_func cairo_args_s cairo_args_default(void) {
 		._status = _cairo_args_status_go_on,
 		.pattern = "*"                     ,
 		.exclude = ""                      ,
+		.shuffle = 0                       ,
 		.repeat  = 1                       ,
 		.verbose = false                   ,
 		.ecode   = 1                       ,
@@ -1008,6 +1021,23 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 			args.exclude = next;
 			++index;
 		}
+		else if (_cairo_args_is(arg, "-s", "--shuffle")) {
+			if (NULL == next) {
+				_cairo_args_report(program, "missing value for", arg, NULL);
+				args._status = _cairo_args_status_error;
+				break;
+			}
+
+			if (!_cairo_args_number(next, &args.shuffle) || !args.shuffle) {
+				_cairo_args_report(
+					program, "expected a positive number for", arg, next
+				);
+				args._status = _cairo_args_status_error;
+				break;
+			}
+
+			++index;
+		}
 		else if (_cairo_args_is(arg, "-r", "--repeat")) {
 			if (NULL == next) {
 				_cairo_args_report(program, "missing value for", arg, NULL);
@@ -1015,7 +1045,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 				break;
 			}
 
-			if (!_cairo_args_number(next, &args.repeat) || (0 == args.repeat)) {
+			if (!_cairo_args_number(next, &args.repeat) || !args.repeat) {
 				_cairo_args_report(
 					program, "expected a positive number for", arg, next
 				);
@@ -1036,7 +1066,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 				break;
 			}
 
-			if (!_cairo_args_number(next, &args.ecode) || (0 == args.ecode)) {
+			if (!_cairo_args_number(next, &args.ecode) || !args.ecode) {
 				_cairo_args_report(
 					program, "expected a positive number for", arg, next
 				);
@@ -1086,12 +1116,37 @@ _cairo_func _cairo_tests_s _cairo_tests_new(const cairo_args_s* const args) {
 	};
 }
 
-/// sorts the tests into suite/name order and marks each's 'shall_run' according
-/// to the include pattern and (if set) the exclude pattern.
-_cairo_func void _cairo_tests_prepare(_cairo_tests_s* const tests) {
+/// sorts the collected test references into suite/name order to have the output
+/// grouped and stable.
+_cairo_func void _cairo_tests_sort(_cairo_tests_s* const tests) {
 	cairo_qsort(
 		tests->data, tests->count, sizeof(*tests->data), _cairo_test_compare
 	);
+}
+
+/// fisher-yates shuffle of the collected test references using a 'seed'-derived
+/// splitmix64 stream. null padding entries shuffle along harmlessly since every
+/// execution and reporting pass skips them.
+_cairo_func void _cairo_tests_shuffle(_cairo_tests_s* const tests,
+									  const uint64_t seed) {
+	uint64_t state = seed;
+
+	for (size_t index = tests->count; index > 1; --index) {
+		const size_t jindex = (size_t)(
+			_cairo_random_next(&state) % (uint64_t)index
+		);
+
+		_cairo_test_s* const test = tests->data[index - 1];
+		tests->data[index - 1]    = tests->data[jindex]   ;
+		tests->data[jindex]       = test                  ;
+	}
+}
+
+/// sorts the tests into suite/name order and marks each's 'shall_run' according
+/// to the include pattern and (if set) the exclude pattern.
+_cairo_func void _cairo_tests_prepare(_cairo_tests_s* const tests) {
+	_cairo_tests_sort(tests);
+	if (tests->args->shuffle) _cairo_tests_shuffle(tests, tests->args->shuffle);
 
 	for (size_t index = 0; index < tests->count; ++index) {
 		_cairo_test_s* const test = tests->data[index];
@@ -1204,7 +1259,8 @@ _cairo_func void _cairo_tests_report_tests(const _cairo_tests_s* const tests) {
 
 /// prints the whole report: per-suite progress, each failure in detail, and the
 /// summary line of passed/failed/skipped counts with total time.
-_cairo_func void _cairo_tests_report(const _cairo_tests_s* const tests) {
+_cairo_func void _cairo_tests_report(_cairo_tests_s* const tests) {
+	_cairo_tests_sort(tests);
 	_cairo_tests_report_suite(tests);
 	_cairo_tests_report_tests(tests);
 	(void)cairo_printf("%zu passed, %zu failed, %zu skipped / %zu (%s)\n",
@@ -1276,6 +1332,7 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
+///     vX.X.X (xxxx-xx-xx) add --shuffle for seeded test order randomization.
 ///     v1.1.0 (2026-08-01) add ':'-separated glob lists for include and exclude
 ///                         patterns.
 ///                         add cairo_supress_sign_compare_warnings setting.
