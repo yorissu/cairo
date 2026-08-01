@@ -1082,8 +1082,10 @@ _cairo_func void _cairo_tests_prepare(_cairo_tests_s* const tests) {
 		_cairo_test_s* const test = tests->data[index];
 		if (NULL == test) continue;
 
-		test->shall_run =  _cairo_test_match(test, tests->args->pattern);
-		test->shall_run = !_cairo_test_match(test, tests->args->exclude);
+		test->shall_run = (
+			_cairo_test_match(test, tests->args->pattern) &&
+			!_cairo_test_match(test, tests->args->exclude)
+		);
 	}
 }
 
