@@ -1276,7 +1276,7 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx) add ':'-separated glob lists for include and exclude
+///     v1.1.0 (2026-08-01) add ':'-separated glob lists for include and exclude
 ///                         patterns.
 ///                         add cairo_supress_sign_compare_warnings setting.
 ///                         add overridable c stdlib function wrappers.
