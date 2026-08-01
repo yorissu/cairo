@@ -609,7 +609,8 @@ _cairo_func int _cairo_test_compare(const void* const a, const void* const b) {
 	return c != 0 ? c : cairo_strcmp(lhs->name, rhs->name);
 }
 
-/// returns whether a test's 'suite.name' matches the given glob pattern.
+/// returns whether a test's 'suite.name' matches a provided, ':'-separated glob
+/// pattern list (via '_cairo_get_globs'); true when any one segment matches.
 _cairo_func bool _cairo_test_match(const _cairo_test_s* const test,
 								   const char* const pattern) {
 	return _cairo_get_globs(pattern, test->suite_and_name);
