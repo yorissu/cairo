@@ -1165,6 +1165,7 @@ _cairo_func void _cairo_tests_prepare(_cairo_tests_s* const tests) {
 /// note: call after '_cairo_tests_prepare', which sorts and applies filters for
 /// the tests and sets the 'shall_run' field.
 _cairo_func void _cairo_tests_list(_cairo_tests_s* const tests) {
+	_cairo_tests_sort(tests);
 	const char* suite = NULL;
 	size_t      count = 0   ;
 
