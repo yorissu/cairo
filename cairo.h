@@ -1382,25 +1382,27 @@ _cairo_func int cairo_tests_run_default(void) {
 _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 #ifdef cairo_enable_prefixless
-#	define test_new          cairo_test_new
-#	define test_skip         cairo_test_skip
-#	define assert_true       cairo_assert_true
-#	define assert_false      cairo_assert_false
-#	define assert_eq         cairo_assert_eq
-#	define assert_neq        cairo_assert_neq
-#	define assert_gt         cairo_assert_gt
-#	define assert_ge         cairo_assert_ge
-#	define assert_lt         cairo_assert_lt
-#	define assert_le         cairo_assert_le
-#	define assert_nr         cairo_assert_nr
-#	define assert_nreq       cairo_assert_nreq
-#	define assert_streq      cairo_assert_streq
-#	define assert_strneq     cairo_assert_strneq
-#	define args_s            cairo_args_s
-#	define args_default      cairo_args_default
-#	define args_new          cairo_args_new
-#	define tests_run         cairo_tests_run
-#	define tests_run_default cairo_tests_run_default
+#	define supress_sign_compare_warnings cairo_supress_sign_compare_warnings
+#	define disable_verbose_output        cairo_disable_verbose_output
+#	define test_new                      cairo_test_new
+#	define test_skip                     cairo_test_skip
+#	define assert_true                   cairo_assert_true
+#	define assert_false                  cairo_assert_false
+#	define assert_eq                     cairo_assert_eq
+#	define assert_neq                    cairo_assert_neq
+#	define assert_gt                     cairo_assert_gt
+#	define assert_ge                     cairo_assert_ge
+#	define assert_lt                     cairo_assert_lt
+#	define assert_le                     cairo_assert_le
+#	define assert_nr                     cairo_assert_nr
+#	define assert_nreq                   cairo_assert_nreq
+#	define assert_streq                  cairo_assert_streq
+#	define assert_strneq                 cairo_assert_strneq
+#	define args_s                        cairo_args_s
+#	define args_default                  cairo_args_default
+#	define args_new                      cairo_args_new
+#	define tests_run                     cairo_tests_run
+#	define tests_run_default             cairo_tests_run_default
 #endif
 
 /// todo: implement naming style macros for public api names.
