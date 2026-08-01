@@ -108,13 +108,13 @@ _cairo_func double _cairo_time_now(void) {
 /// formats a duration (in seconds) into a short, human-readable string, picking
 /// microseconds, milliseconds, or seconds so the number stays readable.
 /// note: returns a pointer to function-local static buffer which is not thread-
-/// safe and can be overwritten by the next call.
+/// safe and will be overwritten by the next call.
 _cairo_func const char* _cairo_format_time(const double time) {
 	static char buffer[65];
 	const size_t size = sizeof(buffer);
 	if (time < 1e-3)     (void)snprintf(buffer, size, "%.3fus", time * 1e6);
 	else if (time < 1.0) (void)snprintf(buffer, size, "%.3fms", time * 1e3);
-	else                 (void)snprintf(buffer, size, "%.3fs", time);
+	else                 (void)snprintf(buffer, size, "%.3fs" , time);
 	return buffer;
 }
 
@@ -1006,10 +1006,10 @@ _cairo_func void _cairo_tests_list(_cairo_tests_s* const tests) {
 /// runs every selected test in order, updating pass/fail/skip counts, and total
 /// elapsed time. skips null records and tests not marked to run.
 _cairo_func void _cairo_tests_execute(_cairo_tests_s* const tests) {
-	tests->passed  = 0  ;
-	tests->failed  = 0  ;
-	tests->skipped = 0  ;
-	tests->elapsed = 0.0;
+	tests->passed  = 0                ;
+	tests->failed  = 0                ;
+	tests->skipped = 0                ;
+	tests->elapsed = _cairo_time_now();
 
 	for (size_t index = 0; index < tests->count; ++index) {
 		_cairo_test_s* const test = tests->data[index];
@@ -1022,8 +1022,9 @@ _cairo_func void _cairo_tests_execute(_cairo_tests_s* const tests) {
 		tests->passed  += (_cairo_test_status_pass == test->status);
 		tests->failed  += (_cairo_test_status_fail == test->status);
 		tests->skipped += (_cairo_test_status_skip == test->status);
-		tests->elapsed += test->elapsed                            ;
 	}
+
+	tests->elapsed = _cairo_time_now() - tests->elapsed;
 }
 
 /// prints the per-suite progress line, grouping tests by suite and emitting one
@@ -1041,9 +1042,6 @@ _cairo_func void _cairo_tests_report_suite(const _cairo_tests_s* const tests) {
 			if (!test->shall_run) continue;
 
 			if ((NULL == suite) || (strcmp(suite, test->suite) != 0)) {
-				if (suite != NULL) {
-					(void)printf(" (%s)\n", _cairo_format_time(elapsed));
-				}
 				suite   = test->suite;
 				elapsed = 0.0        ;
 				(void)printf("%s ", suite);
