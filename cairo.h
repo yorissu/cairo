@@ -232,18 +232,19 @@ _cairo_func const char* _cairo_format_time(const double time) {
 /// matches provided 'text' against a glob 'pattern'. runs in linear time, using
 /// a backtracking star/mark pair rather than recursion. it's used to select and
 /// exclude tests by their 'suite.name'.
-_cairo_func bool _cairo_get_glob(const char* pattern, const char* text) {
+_cairo_func bool _cairo_get_glob(const char* pattern, const char* const end,
+													  const char* text) {
 	const char* star = NULL;
 	const char* mark = NULL;
 
 	while (*text != '\0') {
-		if (('?' == *pattern) || (*pattern == *text)) {
+		if ((pattern < end) && (('?' == *pattern) || (*pattern == *text))) {
 			++pattern;
 			++text;
 			continue;
 		}
 
-		if ('*' == *pattern) {
+		if ((pattern < end) && ('*' == *pattern)) {
 			star = pattern++;
 			mark = text;
 			continue;
@@ -258,8 +259,22 @@ _cairo_func bool _cairo_get_glob(const char* pattern, const char* text) {
 		return false;
 	}
 
-	while ('*' == *pattern) ++pattern;
-	return '\0' == *pattern;
+	while ((pattern < end) && ('*' == *pattern)) ++pattern;
+	return pattern == end;
+}
+
+/// matches 'text' against a ':'-separated list of glob patterns, returning true
+/// as soon as any one segment matches (googletest-style). an empty segment (the
+/// leading, trailing, or doubled ':') matches nothing. used to select or reject
+/// tests by 'suite.name', e.g. "demo.test02:demo.test04:demo.test1*".
+_cairo_func bool _cairo_get_globs(const char* patterns, const char* const text) {
+	for (;;) {
+		const char* const segment = patterns;
+		while ((*patterns != '\0') && (*patterns != ':')) ++patterns;
+		if (_cairo_get_glob(segment, patterns, text)) return true ;
+		if ('\0' == *patterns)                        return false;
+		++patterns;  // note: skip the ':' and try the next segment.
+	}
 }
 
 /// outcome/status of a single test: failed, passed, or explicitly skipped.
@@ -379,7 +394,7 @@ _cairo_func int _cairo_test_compare(const void* const a, const void* const b) {
 /// returns whether a test's 'suite.name' matches the given glob pattern.
 _cairo_func bool _cairo_test_match(const _cairo_test_s* const test,
 								   const char* const pattern) {
-	return _cairo_get_glob(pattern, test->suite_and_name);
+	return _cairo_get_globs(pattern, test->suite_and_name);
 }
 
 // todo: document!
@@ -918,7 +933,7 @@ _cairo_func void _cairo_args_usage(FILE* const stream,
 		"    -l, --list            print all collected tests and exit.\n"
 		"    -h, --help            print this message and exit.\n"
 		"\n"
-		"globs accept * and ?, and are matched against \'suite.name\'.\n",
+		"globs accept *, ?, and : and are matched against \'suite.name\'.\n",
 		program
 	);
 }
@@ -1261,7 +1276,9 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx) add cairo_supress_sign_compare_warnings setting.
+///     vX.X.X (xxxx-xx-xx) add ':'-separated glob lists for include and exclude
+///                         patterns.
+///                         add cairo_supress_sign_compare_warnings setting.
 ///                         add overridable c stdlib function wrappers.
 ///                         fix asserts evaluating arguments twice in tests.
 ///                         add verbosity mechanism and cli --verbose flag.
