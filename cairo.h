@@ -5,13 +5,96 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <string.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <errno.h>
-#include <time.h>
-#include <math.h>
+
+#ifndef cairo_size_max
+#	include <stddef.h>
+	/// todo: document!
+#	define cairo_size_max SIZE_MAX
+#endif
+
+#ifndef cairo_strcmp
+#	include <string.h>
+	/// todo: document!
+#	define cairo_strcmp strcmp
+#endif
+
+#ifndef cairo_strtoul
+#	include <stdlib.h>
+	/// todo: document!
+#	define cairo_strtoul strtoul
+#endif
+
+#ifndef cairo_qsort
+#	include <stdlib.h>
+	/// todo: document!
+#	define cairo_qsort qsort
+#endif
+
+#ifndef cairo_ulong_max
+#	include <limits.h>
+	/// todo: document!
+#	define cairo_ulong_max ULONG_MAX
+#endif
+
+#ifndef cairo_snprintf
+#	include <stdio.h>
+	/// todo: document!
+#	define cairo_snprintf snprintf
+#endif
+
+#ifndef cairo_fprintf
+#	include <stdio.h>
+	/// todo: document!
+#	define cairo_fprintf fprintf
+#endif
+
+#ifndef cairo_printf
+#	include <stdio.h>
+	/// todo: document!
+#	define cairo_printf printf
+#endif
+
+#ifndef cairo_fflush
+#	include <stdio.h>
+	/// todo: document!
+#	define cairo_fflush fflush
+#endif
+
+#ifndef cairo_stdout
+#	include <stdio.h>
+	/// todo: document!
+#	define cairo_stdout stdout
+#endif
+
+#ifndef cairo_stderr
+#	include <stdio.h>
+	/// todo: document!
+#	define cairo_stderr stderr
+#endif
+
+#ifndef cairo_errno
+#	include <errno.h>
+	/// todo: document!
+#	define cairo_errno errno
+#endif
+
+#ifndef cairo_clock
+#	include <time.h>
+	/// todo: document!
+#	define cairo_clock clock
+#endif
+
+#ifndef cairo_clocks_per_sec
+#	include <time.h>
+	/// todo: document!
+#	define cairo_clocks_per_sec CLOCKS_PER_SEC
+#endif
+
+#ifndef cairo_fabs
+#	include <math.h>
+	/// todo: document!
+#	define cairo_fabs fabs
+#endif
 
 /// keeping everything 'static inline' lets the whole framework live in a single
 /// header file without producing duplicate external symbols when it is included
@@ -95,14 +178,13 @@ extern _cairo_test_s* _cairo_sec_stop  __asm("section$end$__DATA$__cairo");
 #	error "cairo: unsupported toolchain!"
 #endif
 
-/// returns a monotonic-ish timestamp in seconds that's used to measure how long
-/// each test takes.
+/// returns a monotonic-ish timestamp in seconds.
 /// todo: expose clock functions for user to set in non standard environments.
 /// fixme: posix clock()'s cpu time (blocking reads as free); windows clock() is
 /// wall time at ~1-15ms resolution; both are poor and should be replaced with a
 /// better approach.
 _cairo_func double _cairo_time_now(void) {
-	return (double)clock() / (double)CLOCKS_PER_SEC;
+	return (double)cairo_clock() / (double)cairo_clocks_per_sec;
 }
 
 /// formats a duration (in seconds) into a short, human-readable string, picking
@@ -112,9 +194,15 @@ _cairo_func double _cairo_time_now(void) {
 _cairo_func const char* _cairo_format_time(const double time) {
 	static char buffer[65];
 	const size_t size = sizeof(buffer);
-	if (time < 1e-3)     (void)snprintf(buffer, size, "%.3fus", time * 1e6);
-	else if (time < 1.0) (void)snprintf(buffer, size, "%.3fms", time * 1e3);
-	else                 (void)snprintf(buffer, size, "%.3fs" , time);
+	if (time < 1e-3) {
+		(void)cairo_snprintf(buffer, size, "%.3fus", time * 1e6);
+	}
+	else if (time < 1.0) {
+		(void)cairo_snprintf(buffer, size, "%.3fms", time * 1e3);
+	}
+	else {
+		(void)cairo_snprintf(buffer, size, "%.3fs" , time);
+	}
 	return buffer;
 }
 
@@ -175,15 +263,15 @@ typedef struct {
 /// status and failure record, the measured elapsed time, and whether the filter
 /// selected it to run.
 struct _cairo_test_s {
-	void(*func)(_cairo_test_s* const)       ;
-	const char*          suite              ;
-	const char*          name               ;
-	const char*          suite_and_name     ;
-	_cairo_test_status_e status             ;
-	bool                 result             ;
-	_cairo_test_fail_s   fail               ;
-	double               elapsed            ;
-	bool                 shall_run          ;
+	void(*func)(_cairo_test_s* const)  ;
+	const char*          suite         ;
+	const char*          name          ;
+	const char*          suite_and_name;
+	_cairo_test_status_e status        ;
+	bool                 result        ;
+	_cairo_test_fail_s   fail          ;
+	double               elapsed       ;
+	bool                 shall_run     ;
 };
 
 /// builds the internal symbol name for a test function from suite and name.
@@ -261,8 +349,8 @@ _cairo_func int _cairo_test_compare(const void* const a, const void* const b) {
 	const _cairo_test_s* const rhs = *(const _cairo_test_s* const*)b;
 	if (NULL == lhs) return (NULL == rhs) ? 0 : 1;
 	if (NULL == rhs) return -1;
-	const int c = strcmp(lhs->suite, rhs->suite);
-	return c != 0 ? c : strcmp(lhs->name, rhs->name);
+	const int c = cairo_strcmp(lhs->suite, rhs->suite);
+	return c != 0 ? c : cairo_strcmp(lhs->name, rhs->name);
 }
 
 /// returns whether a test's 'suite.name' matches the given glob pattern.
@@ -384,41 +472,41 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		}
 
 		if (test->fail.op != NULL) {
-			(void)printf("\n%s:%zu:%zu: %s failed: %s %s %s\n",
+			(void)cairo_printf("\n%s:%zu:%zu: %s failed: %s %s %s\n",
 				test->fail.file, test->fail.line, column, test->suite_and_name,
 				test->fail.lhs, test->fail.op, test->fail.rhs);
 		}
 		else {
-			(void)printf("\n%s:%zu:%zu: %s failed: %s\n",
+			(void)cairo_printf("\n%s:%zu:%zu: %s failed: %s\n",
 				test->fail.file, test->fail.line, column, test->suite_and_name,
 				(test->fail.lhs != NULL) ? test->fail.lhs : "assertion failed");
 		}
 
 		for (int i = 0; i < have; ++i) {
-			(void)printf("  %4d | %s\n", numbers[i], lines[i]);
+			(void)cairo_printf("  %4d | %s\n", numbers[i], lines[i]);
 			if (mark_end[i] <= mark_start[i]) continue;
-			(void)printf("       | ");
+			(void)cairo_printf("       | ");
 			for (size_t c = 0; c < mark_start[i]; ++c) (void)putchar(' ');
 			(void)putchar('^');
 			for (size_t c = mark_start[i] + 1; c < mark_end[i]; ++c) (void)putchar('~');
 			(void)putchar('\n');
 		}
 
-		(void)printf("       |\n");
+		(void)cairo_printf("       |\n");
 		if (test->fail.op != NULL) {
-			(void)printf("       = left:  %s\n", test->fail.lhsb);
-			(void)printf("       = right: %s\n", test->fail.rhsb);
+			(void)cairo_printf("       = left:  %s\n", test->fail.lhsb);
+			(void)cairo_printf("       = right: %s\n", test->fail.rhsb);
 		}
-		(void)printf("       (%s)\n", _cairo_format_time(test->elapsed));
+		(void)cairo_printf("       (%s)\n", _cairo_format_time(test->elapsed));
 	}
 	else {
 		if (test->fail.op != NULL) {
-			(void)printf("\n%s:%zu: %s failed: %s %s %s\n",
+			(void)cairo_printf("\n%s:%zu: %s failed: %s %s %s\n",
 				test->fail.file, test->fail.line, test->suite_and_name,
 				test->fail.lhs, test->fail.op, test->fail.rhs);
 		}
 		else {
-			(void)printf("\n%s:%zu: %s failed: %s\n",
+			(void)cairo_printf("\n%s:%zu: %s failed: %s\n",
 				test->fail.file, test->fail.line, test->suite_and_name,
 				(test->fail.lhs != NULL) ? test->fail.lhs : "assertion failed");
 		}
@@ -475,7 +563,7 @@ typedef long double        _cairo_ld_t ;
 _cairo_func _cairo_c_t _cairo_format_c(char* const buffer,
 									   const size_t size,
 									   const _cairo_c_t value) {
-	(void)snprintf(buffer, size, "%c", value);
+	(void)cairo_snprintf(buffer, size, "%c", value);
 	return value;
 }
 
@@ -483,7 +571,7 @@ _cairo_func _cairo_c_t _cairo_format_c(char* const buffer,
 _cairo_func _cairo_sc_t _cairo_format_sc(char* const buffer,
 										 const size_t size,
 										 const _cairo_sc_t value) {
-	(void)snprintf(buffer, size, "%hhd", value);
+	(void)cairo_snprintf(buffer, size, "%hhd", value);
 	return value;
 }
 
@@ -491,7 +579,7 @@ _cairo_func _cairo_sc_t _cairo_format_sc(char* const buffer,
 _cairo_func _cairo_uc_t _cairo_format_uc(char* const buffer,
 										 const size_t size,
 										 const _cairo_uc_t value) {
-	(void)snprintf(buffer, size, "%hhu", value);
+	(void)cairo_snprintf(buffer, size, "%hhu", value);
 	return value;
 }
 
@@ -499,7 +587,7 @@ _cairo_func _cairo_uc_t _cairo_format_uc(char* const buffer,
 _cairo_func _cairo_b_t _cairo_format_b(char* const buffer,
 									   const size_t size,
 									   const _cairo_b_t value) {
-	(void)snprintf(buffer, size, "%s", value ? "true" : "false");
+	(void)cairo_snprintf(buffer, size, "%s", value ? "true" : "false");
 	return value;
 }
 
@@ -507,7 +595,7 @@ _cairo_func _cairo_b_t _cairo_format_b(char* const buffer,
 _cairo_func _cairo_ss_t _cairo_format_ss(char* const buffer,
 										 const size_t size,
 										 const _cairo_ss_t value) {
-	(void)snprintf(buffer, size, "%hd", value);
+	(void)cairo_snprintf(buffer, size, "%hd", value);
 	return value;
 }
 
@@ -515,7 +603,7 @@ _cairo_func _cairo_ss_t _cairo_format_ss(char* const buffer,
 _cairo_func _cairo_us_t _cairo_format_us(char* const buffer,
 										 const size_t size,
 										 const _cairo_us_t value) {
-	(void)snprintf(buffer, size, "%hu", value);
+	(void)cairo_snprintf(buffer, size, "%hu", value);
 	return value;
 }
 
@@ -523,7 +611,7 @@ _cairo_func _cairo_us_t _cairo_format_us(char* const buffer,
 _cairo_func _cairo_si_t _cairo_format_si(char* const buffer,
 										 const size_t size,
 										 const _cairo_si_t value) {
-	(void)snprintf(buffer, size, "%d", value);
+	(void)cairo_snprintf(buffer, size, "%d", value);
 	return value;
 }
 
@@ -531,7 +619,7 @@ _cairo_func _cairo_si_t _cairo_format_si(char* const buffer,
 _cairo_func _cairo_ui_t _cairo_format_ui(char* const buffer,
 										 const size_t size,
 										 const _cairo_ui_t value) {
-	(void)snprintf(buffer, size, "%u", value);
+	(void)cairo_snprintf(buffer, size, "%u", value);
 	return value;
 }
 
@@ -539,7 +627,7 @@ _cairo_func _cairo_ui_t _cairo_format_ui(char* const buffer,
 _cairo_func _cairo_sl_t _cairo_format_sl(char* const buffer,
 										 const size_t size,
 										 const _cairo_sl_t value) {
-	(void)snprintf(buffer, size, "%ld", value);
+	(void)cairo_snprintf(buffer, size, "%ld", value);
 	return value;
 }
 
@@ -547,7 +635,7 @@ _cairo_func _cairo_sl_t _cairo_format_sl(char* const buffer,
 _cairo_func _cairo_ul_t _cairo_format_ul(char* const buffer,
 										 const size_t size,
 										 const _cairo_ul_t value) {
-	(void)snprintf(buffer, size, "%lu", value);
+	(void)cairo_snprintf(buffer, size, "%lu", value);
 	return value;
 }
 
@@ -555,7 +643,7 @@ _cairo_func _cairo_ul_t _cairo_format_ul(char* const buffer,
 _cairo_func _cairo_sll_t _cairo_format_sll(char* const buffer,
 										   const size_t size,
 										   const _cairo_sll_t value) {
-	(void)snprintf(buffer, size, "%lld", value);
+	(void)cairo_snprintf(buffer, size, "%lld", value);
 	return value;
 }
 
@@ -563,7 +651,7 @@ _cairo_func _cairo_sll_t _cairo_format_sll(char* const buffer,
 _cairo_func _cairo_ull_t _cairo_format_ull(char* const buffer,
 										   const size_t size,
 										   const _cairo_ull_t value) {
-	(void)snprintf(buffer, size, "%llu", value);
+	(void)cairo_snprintf(buffer, size, "%llu", value);
 	return value;
 }
 
@@ -571,7 +659,7 @@ _cairo_func _cairo_ull_t _cairo_format_ull(char* const buffer,
 _cairo_func _cairo_f_t _cairo_format_f(char* const buffer,
 									   const size_t size,
 									   const _cairo_f_t value) {
-	(void)snprintf(buffer, size, "%g", (double)value);
+	(void)cairo_snprintf(buffer, size, "%g", (double)value);
 	return value;
 }
 
@@ -579,7 +667,7 @@ _cairo_func _cairo_f_t _cairo_format_f(char* const buffer,
 _cairo_func _cairo_d_t _cairo_format_d(char* const buffer,
 									   const size_t size,
 									   const _cairo_d_t value) {
-	(void)snprintf(buffer, size, "%g", value);
+	(void)cairo_snprintf(buffer, size, "%g", value);
 	return value;
 }
 
@@ -587,7 +675,7 @@ _cairo_func _cairo_d_t _cairo_format_d(char* const buffer,
 _cairo_func _cairo_ld_t _cairo_format_ld(char* const buffer,
 										 const size_t size,
 										 const _cairo_ld_t value) {
-	(void)snprintf(buffer, size, "%Lg", value);
+	(void)cairo_snprintf(buffer, size, "%Lg", value);
 	return value;
 }
 
@@ -595,8 +683,8 @@ _cairo_func _cairo_ld_t _cairo_format_ld(char* const buffer,
 _cairo_func const char* _cairo_format_cstr(char* const buffer,
 										   const size_t size,
 										   const char* const value) {
-	if (NULL == value) (void)snprintf(buffer, size, "null")         ;
-	else               (void)snprintf(buffer, size, "\"%s\"", value);
+	if (NULL == value) (void)cairo_snprintf(buffer, size, "null")         ;
+	else               (void)cairo_snprintf(buffer, size, "\"%s\"", value);
 	return value;
 }
 
@@ -604,8 +692,8 @@ _cairo_func const char* _cairo_format_cstr(char* const buffer,
 _cairo_func const void* _cairo_format_ptr(char* const buffer,
 										  const size_t size,
 										  const void* const value) {
-	if (NULL == value) (void)snprintf(buffer, size, "null")     ;
-	else               (void)snprintf(buffer, size, "%p", value);
+	if (NULL == value) (void)cairo_snprintf(buffer, size, "null")     ;
+	else               (void)cairo_snprintf(buffer, size, "%p", value);
 	return value;
 }
 
@@ -658,7 +746,7 @@ _cairo_func const void* _cairo_format_ptr(char* const buffer,
 /// failure buffers, and returns from the enclosing test.
 /// note: prefer these over '_eq'/'_neq' for real numbers.
 #define _cairo_assert_loosely(_lhs, _rhs, _epsilon) do {                       \
-		_test->result = (bool)(fabs(                                           \
+		_test->result = (bool)(cairo_fabs(                                     \
 			(double)_cairo_format_type(_test->fail.lhsb, (_lhs)) -             \
 			(double)_cairo_format_type(_test->fail.rhsb, (_rhs))               \
 		) <= (double)(_epsilon));                                              \
@@ -771,7 +859,7 @@ typedef struct {
 /// (e.g. '--example') spelling of an option.
 _cairo_func bool _cairo_args_is(const char* const arg, const char* const brief,
 													   const char* const full) {
-	return strcmp(arg, brief) == 0 ? true : (strcmp(arg, full) == 0);
+	return !cairo_strcmp(arg, brief) ? true : !cairo_strcmp(arg, full);
 }
 
 /// parses 'arg' as a base10 number, returning false on empty input, non-digits,
@@ -782,13 +870,12 @@ _cairo_func bool _cairo_args_number(const char* const arg, size_t* const out) {
 		if ((*digit < '0') || (*digit > '9')) return false;
 	}
 
-	char* end = NULL; errno = 0;
-	const unsigned long value = strtoul(arg, &end, 10);
-
-	if (ERANGE == errno) return false;
-	if (*end != '\0')    return false;
-#if SIZE_MAX < ULONG_MAX
-	if (value > (unsigned long)SIZE_MAX) return false;
+	char* end = NULL; cairo_errno = 0;
+	const unsigned long value = cairo_strtoul(arg, &end, 10);
+	if (ERANGE == cairo_errno)                 return false;
+	if (*end != '\0')                          return false;
+#if cairo_size_max < cairo_ulong_max
+	if (value > (unsigned long)cairo_size_max) return false;
 #endif
 
 	*out = (size_t)value;
@@ -798,7 +885,7 @@ _cairo_func bool _cairo_args_number(const char* const arg, size_t* const out) {
 /// prints the usage/help text for 'program' to the provided 'stream'.
 _cairo_func void _cairo_args_usage(FILE* const stream,
 								   const char* const program) {
-	(void)fprintf(stream,
+	(void)cairo_fprintf(stream,
 		"usage: %s [options]\n"
 		"    -p, --pattern <glob>  run only tests whose suite.name matches.\n"
 		"    -e, --exclude <glob>  skip tests whose suite.name matches.\n"
@@ -814,15 +901,15 @@ _cairo_func void _cairo_args_usage(FILE* const stream,
 }
 
 /// prints a one-liner error ('reason', offending 'option', optional 'value') to
-/// stderr, followed by the usage text.
+/// cairo_stderr, followed by the usage text.
 _cairo_func void _cairo_args_report(const char* const program,
 									const char* const reason,
 									const char* const option,
 									const char* const value) {
-	(void)fprintf(stderr, "%s: %s '%s'.", program, reason, option);
-	if (value != NULL) (void)fprintf(stderr, ": '%s'", value);
-	(void)fprintf(stderr, "\n");
-	_cairo_args_usage(stderr, program);
+	(void)cairo_fprintf(cairo_stderr, "%s: %s '%s'.", program, reason, option);
+	if (value != NULL) (void)cairo_fprintf(cairo_stderr, ": '%s'", value);
+	(void)cairo_fprintf(cairo_stderr, "\n");
+	_cairo_args_usage(cairo_stderr, program);
 }
 
 /// returns the default options: run everything, exclude nothing, do not repeat.
@@ -832,7 +919,7 @@ _cairo_func cairo_args_s cairo_args_default(void) {
 	return (const cairo_args_s) {
 		._status = _cairo_args_status_go_on,
 		.pattern = "*"                     ,
-		.exclude = NULL                    ,
+		.exclude = ""                      ,
 		.repeat  = 1                       ,
 		.verbose = false                   ,
 		.ecode   = 1                       ,
@@ -858,7 +945,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		const char* const next = nindex < count ? argv[nindex] : NULL;
 
 		if (_cairo_args_is(arg, "-h", "--help")) {
-			_cairo_args_usage(stdout, program);
+			_cairo_args_usage(cairo_stdout, program);
 			args._status = _cairo_args_status_exit;
 			break;
 		}
@@ -964,17 +1051,16 @@ _cairo_func _cairo_tests_s _cairo_tests_new(const cairo_args_s* const args) {
 /// sorts the tests into suite/name order and marks each's 'shall_run' according
 /// to the include pattern and (if set) the exclude pattern.
 _cairo_func void _cairo_tests_prepare(_cairo_tests_s* const tests) {
-	qsort(tests->data, tests->count, sizeof(*tests->data), _cairo_test_compare);
+	cairo_qsort(
+		tests->data, tests->count, sizeof(*tests->data), _cairo_test_compare
+	);
 
 	for (size_t index = 0; index < tests->count; ++index) {
 		_cairo_test_s* const test = tests->data[index];
 		if (NULL == test) continue;
 
-		test->shall_run = _cairo_test_match(test, tests->args->pattern);
-		const char* const exclude = tests->args->exclude;
-		if ((exclude != NULL) && _cairo_test_match(test, exclude)) {
-			test->shall_run = false;
-		}
+		test->shall_run =  _cairo_test_match(test, tests->args->pattern);
+		test->shall_run = !_cairo_test_match(test, tests->args->exclude);
 	}
 }
 
@@ -992,15 +1078,15 @@ _cairo_func void _cairo_tests_list(_cairo_tests_s* const tests) {
 		if (NULL == test)     continue;
 		if (!test->shall_run) continue;
 
-		if ((NULL == suite) || (strcmp(suite, test->suite) != 0)) {
+		if ((NULL == suite) || (cairo_strcmp(suite, test->suite) != 0)) {
 			suite = test->suite;
-			(void)printf("%s\n", suite);
+			(void)cairo_printf("%s\n", suite);
 		}
 
-		(void)printf("  %zu. %s\n", ++count, test->name);
+		(void)cairo_printf("  %zu. %s\n", ++count, test->name);
 	}
 
-	(void)printf("\n%zu tests\n", count);
+	(void)cairo_printf("\n%zu tests\n", count);
 }
 
 /// runs every selected test in order, updating pass/fail/skip counts, and total
@@ -1041,20 +1127,20 @@ _cairo_func void _cairo_tests_report_suite(const _cairo_tests_s* const tests) {
 			if (NULL == test)     continue;
 			if (!test->shall_run) continue;
 
-			if ((NULL == suite) || (strcmp(suite, test->suite) != 0)) {
+			if ((NULL == suite) || (cairo_strcmp(suite, test->suite) != 0)) {
 				suite   = test->suite;
 				elapsed = 0.0        ;
-				(void)printf("%s ", suite);
+				(void)cairo_printf("%s ", suite);
 			}
 
 			elapsed += test->elapsed;
 			const bool passed = _cairo_test_status_pass == test->status;
 			const bool failed = _cairo_test_status_fail == test->status;
-			(void)printf("%s", passed ? "." : (failed ? "F" : "S"));
-			(void)fflush(stdout);
+			(void)cairo_printf("%s", passed ? "." : (failed ? "F" : "S"));
+			(void)cairo_fflush(cairo_stdout);
 		}
 
-		(void)printf(" (%s)\n", _cairo_format_time(elapsed));
+		(void)cairo_printf(" (%s)\n", _cairo_format_time(elapsed));
 	}
 }
 
@@ -1072,7 +1158,7 @@ _cairo_func void _cairo_tests_report_tests(const _cairo_tests_s* const tests) {
 			}
 		}
 
-		(void)printf("\n");
+		(void)cairo_printf("\n");
 	}
 }
 
@@ -1081,7 +1167,7 @@ _cairo_func void _cairo_tests_report_tests(const _cairo_tests_s* const tests) {
 _cairo_func void _cairo_tests_report(const _cairo_tests_s* const tests) {
 	_cairo_tests_report_suite(tests);
 	_cairo_tests_report_tests(tests);
-	(void)printf("%zu passed, %zu failed, %zu skipped / %zu (%s)\n",
+	(void)cairo_printf("%zu passed, %zu failed, %zu skipped / %zu (%s)\n",
 		tests->passed, tests->failed, tests->skipped,
 		tests->passed + tests->failed + tests->skipped,
 		_cairo_format_time(tests->elapsed)
@@ -1150,7 +1236,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx) fix asserts evaluating arguments twice in tests.
+///     vX.X.X (xxxx-xx-xx) add overridable c stdlib function wrappers.
+///                         fix asserts evaluating arguments twice in tests.
 ///                         add verbosity mechanism and cli --verbose flag.
 ///     v1.0.0 (2026-07-28) first release.
 /// 
