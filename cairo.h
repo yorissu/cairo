@@ -201,6 +201,214 @@ extern _cairo_test_s* _cairo_sec_stop  __asm("section$end$__DATA$__cairo");
 #	error "cairo: unsupported toolchain!"
 #endif
 
+typedef char               _cairo_c_t  ;
+typedef signed char        _cairo_sc_t ;
+typedef unsigned char      _cairo_uc_t ;
+typedef bool               _cairo_b_t  ;
+typedef signed short       _cairo_ss_t ;
+typedef unsigned short     _cairo_us_t ;
+typedef signed int         _cairo_si_t ;
+typedef unsigned int       _cairo_ui_t ;
+typedef signed long        _cairo_sl_t ;
+typedef unsigned long      _cairo_ul_t ;
+typedef signed long long   _cairo_sll_t;
+typedef unsigned long long _cairo_ull_t;
+typedef float              _cairo_f_t  ;
+typedef double             _cairo_d_t  ;
+typedef long double        _cairo_ld_t ;
+
+/// formats a char value into a buffer of provided size as text.
+_cairo_func _cairo_c_t _cairo_format_c(char* const buffer,
+									   const size_t size,
+									   const _cairo_c_t value) {
+	(void)cairo_snprintf(buffer, size, "%c", value);
+	return value;
+}
+
+/// formats a signed char value into a buffer of provided size as text.
+_cairo_func _cairo_sc_t _cairo_format_sc(char* const buffer,
+										 const size_t size,
+										 const _cairo_sc_t value) {
+	(void)cairo_snprintf(buffer, size, "%hhd", value);
+	return value;
+}
+
+/// formats a unsigned char value into a buffer of provided size as text.
+_cairo_func _cairo_uc_t _cairo_format_uc(char* const buffer,
+										 const size_t size,
+										 const _cairo_uc_t value) {
+	(void)cairo_snprintf(buffer, size, "%hhu", value);
+	return value;
+}
+
+/// formats a bool value into a buffer of provided size as text.
+_cairo_func _cairo_b_t _cairo_format_b(char* const buffer,
+									   const size_t size,
+									   const _cairo_b_t value) {
+	(void)cairo_snprintf(buffer, size, "%s", value ? "true" : "false");
+	return value;
+}
+
+/// formats a signed short value into a buffer of provided size as text.
+_cairo_func _cairo_ss_t _cairo_format_ss(char* const buffer,
+										 const size_t size,
+										 const _cairo_ss_t value) {
+	(void)cairo_snprintf(buffer, size, "%hd", value);
+	return value;
+}
+
+/// formats a unsigned short value into a buffer of provided size as text.
+_cairo_func _cairo_us_t _cairo_format_us(char* const buffer,
+										 const size_t size,
+										 const _cairo_us_t value) {
+	(void)cairo_snprintf(buffer, size, "%hu", value);
+	return value;
+}
+
+/// formats a signed int value into a buffer of provided size as text.
+_cairo_func _cairo_si_t _cairo_format_si(char* const buffer,
+										 const size_t size,
+										 const _cairo_si_t value) {
+	(void)cairo_snprintf(buffer, size, "%d", value);
+	return value;
+}
+
+/// formats a unsigned int value into a buffer of provided size as text.
+_cairo_func _cairo_ui_t _cairo_format_ui(char* const buffer,
+										 const size_t size,
+										 const _cairo_ui_t value) {
+	(void)cairo_snprintf(buffer, size, "%u", value);
+	return value;
+}
+
+/// formats a signed long value into a buffer of provided size as text.
+_cairo_func _cairo_sl_t _cairo_format_sl(char* const buffer,
+										 const size_t size,
+										 const _cairo_sl_t value) {
+	(void)cairo_snprintf(buffer, size, "%ld", value);
+	return value;
+}
+
+/// formats a unsigned long value into a buffer of provided size as text.
+_cairo_func _cairo_ul_t _cairo_format_ul(char* const buffer,
+										 const size_t size,
+										 const _cairo_ul_t value) {
+	(void)cairo_snprintf(buffer, size, "%lu", value);
+	return value;
+}
+
+/// formats a signed long long value into a buffer of provided size as text.
+_cairo_func _cairo_sll_t _cairo_format_sll(char* const buffer,
+										   const size_t size,
+										   const _cairo_sll_t value) {
+	(void)cairo_snprintf(buffer, size, "%lld", value);
+	return value;
+}
+
+/// formats a unsigned long long value into a buffer of provided size as text.
+_cairo_func _cairo_ull_t _cairo_format_ull(char* const buffer,
+										   const size_t size,
+										   const _cairo_ull_t value) {
+	(void)cairo_snprintf(buffer, size, "%llu", value);
+	return value;
+}
+
+/// formats a float value into a buffer of provided size as text.
+_cairo_func _cairo_f_t _cairo_format_f(char* const buffer,
+									   const size_t size,
+									   const _cairo_f_t value) {
+	(void)cairo_snprintf(buffer, size, "%g", (double)value);
+	return value;
+}
+
+/// formats a double value into a buffer of provided size as text.
+_cairo_func _cairo_d_t _cairo_format_d(char* const buffer,
+									   const size_t size,
+									   const _cairo_d_t value) {
+	(void)cairo_snprintf(buffer, size, "%g", value);
+	return value;
+}
+
+/// formats a long double value into a buffer of provided size as text.
+_cairo_func _cairo_ld_t _cairo_format_ld(char* const buffer,
+										 const size_t size,
+										 const _cairo_ld_t value) {
+	(void)cairo_snprintf(buffer, size, "%Lg", value);
+	return value;
+}
+
+/// formats a char* value into a buffer of provided size as text.
+_cairo_func const char* _cairo_format_cstr(char* const buffer,
+										   const size_t size,
+										   const char* const value) {
+	if (NULL == value) (void)cairo_snprintf(buffer, size, "null")         ;
+	else               (void)cairo_snprintf(buffer, size, "\"%s\"", value);
+	return value;
+}
+
+/// formats a void* value into a buffer of provided size as text.
+_cairo_func const void* _cairo_format_ptr(char* const buffer,
+										  const size_t size,
+										  const void* const value) {
+	if (NULL == value) (void)cairo_snprintf(buffer, size, "null")     ;
+	else               (void)cairo_snprintf(buffer, size, "%p", value);
+	return value;
+}
+
+/// formats a '_value' into character buffer '_buffer' by selecting the matching
+/// '_cairo_format_*' formatter for the value's type at compile time, so that, a
+/// failed assertion can print 'left' and 'right', without the caller naming the
+/// types. it is the non-string table, it works the arithmetic and boolean types
+/// and sends anything else (any pointer) as a raw address.
+#define _cairo_format_non_str_type(_buffer, _value) _Generic((_value),         \
+		char:               _cairo_format_c   ,                                \
+		signed char:        _cairo_format_sc  ,                                \
+		unsigned char:      _cairo_format_uc  ,                                \
+		_Bool:              _cairo_format_b   ,                                \
+		signed short:       _cairo_format_ss  ,                                \
+		unsigned short:     _cairo_format_us  ,                                \
+		signed int:         _cairo_format_si  ,                                \
+		unsigned int:       _cairo_format_ui  ,                                \
+		signed long:        _cairo_format_sl  ,                                \
+		unsigned long:      _cairo_format_ul  ,                                \
+		signed long long:   _cairo_format_sll ,                                \
+		unsigned long long: _cairo_format_ull ,                                \
+		float:              _cairo_format_f   ,                                \
+		double:             _cairo_format_d   ,                                \
+		long double:        _cairo_format_ld  ,                                \
+		default:            _cairo_format_ptr                                  \
+	)((_buffer), sizeof(_buffer), (_value))
+
+/// counterpart to '_cairo_format_non_str_type', used for the string asserts. it
+/// maps 'char*'/'const char*' to '_cairo_format_cstr' (which quotes the text or
+/// emits 'null'), and pushes anything else to '_cairo_format_ptr'.
+/// note: 'char[]' array decays to 'char*' here and matches as a c-string.
+#define _cairo_format_str_type(_buffer, _value) _Generic((_value),             \
+		char*:       _cairo_format_cstr,                                       \
+		const char*: _cairo_format_cstr,                                       \
+		default:     _cairo_format_ptr                                         \
+	)((_buffer), sizeof(_buffer), (_value))
+
+/// content-compares two cstrings for equality via 'cairo_strcmp', returning the
+/// pointer identity, when either side is null so two nulls count as equal and a
+/// null-vs-string as unequal (never dereferencing a null).
+/// note: prefer it over '_eq' for strings, which compares addresses.
+_cairo_func bool _cairo_cstr_streq(const char* const lhs,
+								   const char* const rhs) {
+	if ((NULL == lhs) || (NULL == rhs)) return lhs == rhs;
+	return (cairo_strcmp(lhs, rhs) == 0);
+}
+
+/// it content-compares two cstrings for inequality by 'cairo_strcmp', returning
+/// the pointer inequality when either side is null, so two nulls count as equal
+/// and a null-vs-string as unequal (never dereferencing a null).
+/// note: prefer it over '_neq' for strings, which compares addresses.
+_cairo_func bool _cairo_cstr_strneq(const char* const lhs,
+									const char* const rhs) {
+	if ((NULL == lhs) || (NULL == rhs)) return lhs != rhs;
+	return (cairo_strcmp(lhs, rhs) != 0);
+}
+
 /// returns a monotonic-ish timestamp in seconds.
 /// todo: expose clock functions for user to set in non standard environments.
 /// fixme: posix clock()'s cpu time (blocking reads as free); windows clock() is
@@ -591,194 +799,14 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		}                                                                      \
 	} while (0)
 
-typedef char               _cairo_c_t  ;
-typedef signed char        _cairo_sc_t ;
-typedef unsigned char      _cairo_uc_t ;
-typedef bool               _cairo_b_t  ;
-typedef signed short       _cairo_ss_t ;
-typedef unsigned short     _cairo_us_t ;
-typedef signed int         _cairo_si_t ;
-typedef unsigned int       _cairo_ui_t ;
-typedef signed long        _cairo_sl_t ;
-typedef unsigned long      _cairo_ul_t ;
-typedef signed long long   _cairo_sll_t;
-typedef unsigned long long _cairo_ull_t;
-typedef float              _cairo_f_t  ;
-typedef double             _cairo_d_t  ;
-typedef long double        _cairo_ld_t ;
-
-/// formats a char value into a buffer of provided size as text.
-_cairo_func _cairo_c_t _cairo_format_c(char* const buffer,
-									   const size_t size,
-									   const _cairo_c_t value) {
-	(void)cairo_snprintf(buffer, size, "%c", value);
-	return value;
-}
-
-/// formats a signed char value into a buffer of provided size as text.
-_cairo_func _cairo_sc_t _cairo_format_sc(char* const buffer,
-										 const size_t size,
-										 const _cairo_sc_t value) {
-	(void)cairo_snprintf(buffer, size, "%hhd", value);
-	return value;
-}
-
-/// formats a unsigned char value into a buffer of provided size as text.
-_cairo_func _cairo_uc_t _cairo_format_uc(char* const buffer,
-										 const size_t size,
-										 const _cairo_uc_t value) {
-	(void)cairo_snprintf(buffer, size, "%hhu", value);
-	return value;
-}
-
-/// formats a bool value into a buffer of provided size as text.
-_cairo_func _cairo_b_t _cairo_format_b(char* const buffer,
-									   const size_t size,
-									   const _cairo_b_t value) {
-	(void)cairo_snprintf(buffer, size, "%s", value ? "true" : "false");
-	return value;
-}
-
-/// formats a signed short value into a buffer of provided size as text.
-_cairo_func _cairo_ss_t _cairo_format_ss(char* const buffer,
-										 const size_t size,
-										 const _cairo_ss_t value) {
-	(void)cairo_snprintf(buffer, size, "%hd", value);
-	return value;
-}
-
-/// formats a unsigned short value into a buffer of provided size as text.
-_cairo_func _cairo_us_t _cairo_format_us(char* const buffer,
-										 const size_t size,
-										 const _cairo_us_t value) {
-	(void)cairo_snprintf(buffer, size, "%hu", value);
-	return value;
-}
-
-/// formats a signed int value into a buffer of provided size as text.
-_cairo_func _cairo_si_t _cairo_format_si(char* const buffer,
-										 const size_t size,
-										 const _cairo_si_t value) {
-	(void)cairo_snprintf(buffer, size, "%d", value);
-	return value;
-}
-
-/// formats a unsigned int value into a buffer of provided size as text.
-_cairo_func _cairo_ui_t _cairo_format_ui(char* const buffer,
-										 const size_t size,
-										 const _cairo_ui_t value) {
-	(void)cairo_snprintf(buffer, size, "%u", value);
-	return value;
-}
-
-/// formats a signed long value into a buffer of provided size as text.
-_cairo_func _cairo_sl_t _cairo_format_sl(char* const buffer,
-										 const size_t size,
-										 const _cairo_sl_t value) {
-	(void)cairo_snprintf(buffer, size, "%ld", value);
-	return value;
-}
-
-/// formats a unsigned long value into a buffer of provided size as text.
-_cairo_func _cairo_ul_t _cairo_format_ul(char* const buffer,
-										 const size_t size,
-										 const _cairo_ul_t value) {
-	(void)cairo_snprintf(buffer, size, "%lu", value);
-	return value;
-}
-
-/// formats a signed long long value into a buffer of provided size as text.
-_cairo_func _cairo_sll_t _cairo_format_sll(char* const buffer,
-										   const size_t size,
-										   const _cairo_sll_t value) {
-	(void)cairo_snprintf(buffer, size, "%lld", value);
-	return value;
-}
-
-/// formats a unsigned long long value into a buffer of provided size as text.
-_cairo_func _cairo_ull_t _cairo_format_ull(char* const buffer,
-										   const size_t size,
-										   const _cairo_ull_t value) {
-	(void)cairo_snprintf(buffer, size, "%llu", value);
-	return value;
-}
-
-/// formats a float value into a buffer of provided size as text.
-_cairo_func _cairo_f_t _cairo_format_f(char* const buffer,
-									   const size_t size,
-									   const _cairo_f_t value) {
-	(void)cairo_snprintf(buffer, size, "%g", (double)value);
-	return value;
-}
-
-/// formats a double value into a buffer of provided size as text.
-_cairo_func _cairo_d_t _cairo_format_d(char* const buffer,
-									   const size_t size,
-									   const _cairo_d_t value) {
-	(void)cairo_snprintf(buffer, size, "%g", value);
-	return value;
-}
-
-/// formats a long double value into a buffer of provided size as text.
-_cairo_func _cairo_ld_t _cairo_format_ld(char* const buffer,
-										 const size_t size,
-										 const _cairo_ld_t value) {
-	(void)cairo_snprintf(buffer, size, "%Lg", value);
-	return value;
-}
-
-/// formats a char* value into a buffer of provided size as text.
-_cairo_func const char* _cairo_format_cstr(char* const buffer,
-										   const size_t size,
-										   const char* const value) {
-	if (NULL == value) (void)cairo_snprintf(buffer, size, "null")         ;
-	else               (void)cairo_snprintf(buffer, size, "\"%s\"", value);
-	return value;
-}
-
-/// formats a void* value into a buffer of provided size as text.
-_cairo_func const void* _cairo_format_ptr(char* const buffer,
-										  const size_t size,
-										  const void* const value) {
-	if (NULL == value) (void)cairo_snprintf(buffer, size, "null")     ;
-	else               (void)cairo_snprintf(buffer, size, "%p", value);
-	return value;
-}
-
-/// formats a '_value' into character buffer '_buffer' by selecting the matching
-/// '_cairo_format_*' formatter for the value's type at compile time. this way a
-/// failed assertion can print 'left' and 'right' values without the test caller
-/// naming the types.
-/// note: the 'default' case handles any pointer type as a raw address.
-#define _cairo_format_type(_buffer, _value) _Generic((_value),                 \
-		char:               _cairo_format_c   ,                                \
-		signed char:        _cairo_format_sc  ,                                \
-		unsigned char:      _cairo_format_uc  ,                                \
-		_Bool:              _cairo_format_b   ,                                \
-		signed short:       _cairo_format_ss  ,                                \
-		unsigned short:     _cairo_format_us  ,                                \
-		signed int:         _cairo_format_si  ,                                \
-		unsigned int:       _cairo_format_ui  ,                                \
-		signed long:        _cairo_format_sl  ,                                \
-		unsigned long:      _cairo_format_ul  ,                                \
-		signed long long:   _cairo_format_sll ,                                \
-		unsigned long long: _cairo_format_ull ,                                \
-		float:              _cairo_format_f   ,                                \
-		double:             _cairo_format_d   ,                                \
-		long double:        _cairo_format_ld  ,                                \
-		char*:              _cairo_format_cstr,                                \
-		const char*:        _cairo_format_cstr,                                \
-		default:            _cairo_format_ptr                                  \
-	)((_buffer), sizeof(_buffer), (_value))
-
 /// evaluates '_lhs' '_op' '_rhs', when that is false it records the stringified
 /// operands, the operator, and the source location, formats both operand values
 /// into the failure buffers, and returns from the enclosing test.
 #define _cairo_assert_binary(_lhs, _rhs, _op) do {                             \
 		_cairo_diag_nosign({                                                   \
 			_test->result = (bool)(                                            \
-				_cairo_format_type(_test->fail.lhsb, (_lhs)) _op               \
-				_cairo_format_type(_test->fail.rhsb, (_rhs))                   \
+				_cairo_format_non_str_type(_test->fail.lhsb, (_lhs)) _op       \
+				_cairo_format_non_str_type(_test->fail.rhsb, (_rhs))           \
 			);                                                                 \
 		});                                                                    \
 		                                                                       \
@@ -795,12 +823,29 @@ _cairo_func const void* _cairo_format_ptr(char* const buffer,
 /// note: prefer these over '_eq'/'_neq' for real numbers.
 #define _cairo_assert_loosely(_lhs, _rhs, _epsilon) do {                       \
 		_test->result = (bool)(cairo_fabs(                                     \
-			(double)_cairo_format_type(_test->fail.lhsb, (_lhs)) -             \
-			(double)_cairo_format_type(_test->fail.rhsb, (_rhs))               \
+			(double)_cairo_format_non_str_type(_test->fail.lhsb, (_lhs)) -     \
+			(double)_cairo_format_non_str_type(_test->fail.rhsb, (_rhs))       \
 		) <= (double)(_epsilon));                                              \
 		                                                                       \
 		if (!_test->result) {                                                  \
 			_cairo_record_fail(#_lhs, #_rhs, "~=", __FILE__, __LINE__);        \
+			return;                                                            \
+		}                                                                      \
+	} while (0)
+
+/// evaluates a cstring comparison by pasting '_op' onto '_cairo_cstr_', to pick
+/// the '_streq'/'_strneq' helper, running it on both operands, after formatting
+/// each into the failure buffers. on a false result, it records the stringified
+/// operands with '_op' as the reported operator, and fail source location, then
+/// returns from the enclosing test.
+#define _cairo_assert_strings(_lhs, _rhs, _op) do {                            \
+		_test->result = (bool)(_cairo_cstr_ ## _op(                            \
+			_cairo_format_str_type(_test->fail.lhsb, (_lhs)),                  \
+			_cairo_format_str_type(_test->fail.rhsb, (_rhs))                   \
+		));                                                                    \
+		                                                                       \
+		if (!_test->result) {                                                  \
+			_cairo_record_fail(#_lhs, #_rhs, #_op, __FILE__, __LINE__);        \
 			return;                                                            \
 		}                                                                      \
 	} while (0)
@@ -877,6 +922,24 @@ _cairo_func const void* _cairo_format_ptr(char* const buffer,
 /// on floats compares bit-exactly and will surprise you.
 #define cairo_assert_nreq(_lhs, _rhs) do {                                     \
 		cairo_assert_nr(_lhs, _rhs, 1e-6);                                     \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, assert records the
+/// location and operands and aborts the rest of its test.
+/// note: cairo_assert_streq(lhs, rhs) - lhs and rhs have equal string content.
+/// note: use the '_streq'/'_strneq' forms for c-strings; the '_eq'/'_neq' forms
+/// compare pointers, not content, and will surprise you.
+#define cairo_assert_streq(_lhs, _rhs) do {                                    \
+		_cairo_assert_strings(_lhs, _rhs, streq);                              \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, assert records the
+/// location and operands and aborts the rest of its test.
+/// note: cairo_assert_strneq(lhs, rhs) - lhs and rhs differ in string content.
+/// note: use the '_streq'/'_strneq' forms for c-strings; the '_eq'/'_neq' forms
+/// compare pointers, not content, and will surprise you.
+#define cairo_assert_strneq(_lhs, _rhs) do {                                   \
+		_cairo_assert_strings(_lhs, _rhs, strneq);                             \
 	} while (0)
 
 /// parse-status of the command line and ordered so the enumerator value doubles
@@ -1324,6 +1387,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 #	define assert_le         cairo_assert_le
 #	define assert_nr         cairo_assert_nr
 #	define assert_nreq       cairo_assert_nreq
+#	define assert_streq      cairo_assert_streq
+#	define assert_strneq     cairo_assert_strneq
 #	define args_s            cairo_args_s
 #	define args_default      cairo_args_default
 #	define args_new          cairo_args_new
@@ -1337,7 +1402,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx) fix single line suite reporting bug.
+///     vX.X.X (xxxx-xx-xx) add cairo_assert_streq/strneq cstrings asserts.
+///                         fix single line suite reporting bug.
 ///                         add --shuffle for seeded test order randomization.
 ///     v1.1.0 (2026-08-01) add ':'-separated glob lists for include and exclude
 ///                         patterns.
