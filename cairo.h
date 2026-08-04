@@ -585,7 +585,7 @@ _cairo_func uint64_t _cairo_random_next(uint64_t* const state) {
 }
 
 /// outcome/status of a single test: failed, passed, or explicitly skipped.
-typedef enum {
+typedef enum _cairo_test_status_e {
 	_cairo_test_status_fail,
 	_cairo_test_status_pass,
 	_cairo_test_status_skip,
@@ -594,7 +594,7 @@ typedef enum {
 /// recorded details of failed assertions: an operator and stringified operands,
 /// the source location, and the two operand values already formatted to strings
 /// for reporting.
-typedef struct {
+typedef struct _cairo_test_fail_s {
 	const char* lhs     ;
 	const char* rhs     ;
 	const char* op      ;
@@ -692,7 +692,7 @@ _cairo_func void _cairo_test_run(_cairo_test_s* const test) {
 _cairo_func int _cairo_test_compare(const void* const a, const void* const b) {
 	const _cairo_test_s* const lhs = *(const _cairo_test_s* const*)a;
 	const _cairo_test_s* const rhs = *(const _cairo_test_s* const*)b;
-	if (NULL == lhs) return (NULL == rhs) ? 0 : 1;
+	if (NULL == lhs) return NULL == rhs ? 0 : 1;
 	if (NULL == rhs) return -1;
 	const int c = cairo_strcmp(lhs->suite, rhs->suite);
 	return c != 0 ? c : cairo_strcmp(lhs->name, rhs->name);
@@ -1041,9 +1041,9 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 /// parse-status of the command line and ordered so the enumerator value doubles
 /// as an exit code: 'exit' for a clean, early stop, 'go_on' to keep the program
 /// running, 'error' for a usage error.
-/// note: keep this order, 'cairo_tests_run' returns '(int)args._status' directly
+/// note: keep the order, 'cairo_tests_run' returns '(int)args._status' directly
 /// for the non-'go_on' cases, so reordering silently changes exit code mapping.
-typedef enum {
+typedef enum _cairo_args_status_e {
 	_cairo_args_status_exit ,
 	_cairo_args_status_go_on,
 	_cairo_args_status_error,
@@ -1052,7 +1052,7 @@ typedef enum {
 /// parsed command-line options configuring a tests run: which tests to include,
 /// which to exclude, how many times to repeat the tests set, and what exit code
 /// to use when tests fail. the 'status' reports how parsing ended.
-typedef struct {
+typedef struct cairo_args_s {
 	_cairo_args_status_e _status;
 	const char*          pattern;
 	const char*          exclude;
@@ -1265,7 +1265,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 
 /// the full tests run: the array of test references collected from the section,
 /// running tallies (passed/failed/skipped), total elapsed time, and args.
-typedef struct {
+typedef struct _cairo_tests_s {
 	_cairo_test_s**     data   ;
 	size_t              count  ;
 	size_t              passed ;
