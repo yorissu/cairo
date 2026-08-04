@@ -1,6 +1,0 @@
-
-- Add command line arguments for parallelizing tests.
-- Add a mechanism to parallelize tests.
-- Add test setup function mechanism.
-- Add test teardown function mechanism.
-- Rework and automate examples.

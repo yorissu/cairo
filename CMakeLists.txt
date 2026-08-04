@@ -12,6 +12,7 @@ set(CAIRO_FLAGS -Wall -Wextra -Werror -Wpedantic
 	-Wwrite-strings -Wswitch-enum -Wswitch-default
 	-Wnull-dereference -Winit-self -Wjump-misses-init -Wvla -Walloca
 	-Wduplicated-cond -Wduplicated-branches -Wlogical-op
+	-Wno-error=deprecated-declarations
 )
 
 set(run_targets "")
