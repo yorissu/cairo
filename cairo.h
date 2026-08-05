@@ -70,6 +70,66 @@
 ///     cairo_assert_strneq("foo", "bar");
 /// }
 /// 
+/// cairo_test_new(demo, test14) {
+///     cairo_expect_true(true);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test15) {
+///     cairo_expect_false(false);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test16) {
+///     cairo_expect_eq(0, 0);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test17) {
+///     cairo_expect_neq(0, 1);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test18) {
+///     cairo_expect_gt(1, 0);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test19) {
+///     cairo_expect_ge(1, 1);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test20) {
+///     cairo_expect_lt(0, 1);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test21) {
+///     cairo_expect_le(1, 1);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test22) {
+///     cairo_expect_nr(0, 1e-7, 1e-6);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test23) {
+///     cairo_expect_nreq(0, 1e-7);
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test24) {
+///     cairo_expect_streq("foo", "foo");
+///     cairo_test_defered {}
+/// }
+/// 
+/// cairo_test_new(demo, test25) {
+///     cairo_expect_strneq("foo", "bar");
+///     cairo_test_defered {}
+/// }
+/// 
 /// int main(const int argc, const char* argv[]) {
 ///     {  // simple run
 ///         return cairo_tests_run(cairo_args_new(argc, argv));
