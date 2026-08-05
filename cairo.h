@@ -884,21 +884,20 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 	} while (0)
 
 /// evaluates '_expr', then on a falsy result it records the stringified '_expr'
-/// as the failure and returns from the enclosing test aborting whatever remains
-/// of it.
-#define _cairo_assert_unary(_expr) do {                                        \
+/// as the failure and runs the _on_fail action.
+#define _cairo_check_unary(_expr, _on_fail) do {                               \
 		_test->result = (bool)(_expr);                                         \
 		                                                                       \
 		if (!_test->result) {                                                  \
 			_cairo_record_fail(#_expr, NULL, NULL, __FILE__, __LINE__);        \
-			return;                                                            \
+			_on_fail;                                                          \
 		}                                                                      \
 	} while (0)
 
 /// evaluates '_lhs' '_op' '_rhs', when that is false it records the stringified
 /// operands, the operator, and the source location, formats both operand values
-/// into the failure buffers, and returns from the enclosing test.
-#define _cairo_assert_binary(_lhs, _rhs, _op) do {                             \
+/// into the failure buffers, and runs the _on_fail action.
+#define _cairo_check_binary(_lhs, _rhs, _op, _on_fail) do {                    \
 		_cairo_diag_nosign({                                                   \
 			_test->result = (bool)(                                            \
 				_cairo_format_non_str_type(_test->fail.lhsb, (_lhs)) _op       \
@@ -908,16 +907,16 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		                                                                       \
 		if (!_test->result) {                                                  \
 			_cairo_record_fail(#_lhs, #_rhs, #_op, __FILE__, __LINE__);        \
-			return;                                                            \
+			_on_fail;                                                          \
 		}                                                                      \
 	} while (0)
 
 /// evaluates as pass when '_lhs' and '_rhs' are within '_epsilon' of each other
 /// (|lhs - rhs| <= epsilon, computed in double). on failure it records operands
 /// with the '~=' operator, formats '_lhs' and '_rhs' values into the respective
-/// failure buffers, and returns from the enclosing test.
+/// failure buffers, and runs the _on_fail action.
 /// note: prefer these over '_eq'/'_neq' for real numbers.
-#define _cairo_assert_loosely(_lhs, _rhs, _epsilon) do {                       \
+#define _cairo_check_loosely(_lhs, _rhs, _epsilon, _on_fail) do {              \
 		_test->result = (bool)(cairo_fabs(                                     \
 			(double)_cairo_format_non_str_type(_test->fail.lhsb, (_lhs)) -     \
 			(double)_cairo_format_non_str_type(_test->fail.rhsb, (_rhs))       \
@@ -925,7 +924,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		                                                                       \
 		if (!_test->result) {                                                  \
 			_cairo_record_fail(#_lhs, #_rhs, "~=", __FILE__, __LINE__);        \
-			return;                                                            \
+			_on_fail;                                                          \
 		}                                                                      \
 	} while (0)
 
@@ -933,8 +932,8 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 /// the '_streq'/'_strneq' helper, running it on both operands, after formatting
 /// each into the failure buffers. on a false result, it records the stringified
 /// operands with '_op' as the reported operator, and fail source location, then
-/// returns from the enclosing test.
-#define _cairo_assert_strings(_lhs, _rhs, _op) do {                            \
+/// runs the _on_fail action.
+#define _cairo_check_strings(_lhs, _rhs, _op, _on_fail) do {                   \
 		_test->result = (bool)(_cairo_cstr_ ## _op(                            \
 			_cairo_format_str_type(_test->fail.lhsb, (_lhs)),                  \
 			_cairo_format_str_type(_test->fail.rhsb, (_rhs))                   \
@@ -942,7 +941,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 		                                                                       \
 		if (!_test->result) {                                                  \
 			_cairo_record_fail(#_lhs, #_rhs, #_op, __FILE__, __LINE__);        \
-			return;                                                            \
+			_on_fail;                                                          \
 		}                                                                      \
 	} while (0)
 
@@ -950,56 +949,56 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_true(x) - x is truthy.
 #define cairo_assert_true(_expr) do {                                          \
-		_cairo_assert_unary(_expr);                                            \
+		_cairo_check_unary(_expr, return);                                     \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_false(x) - x is falsy.
 #define cairo_assert_false(_expr) do {                                         \
-		_cairo_assert_unary(!(_expr));                                         \
+		_cairo_check_unary(!(_expr), return);                                  \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_eq(lhs, rhs) - lhs == rhs.
 #define cairo_assert_eq(_lhs, _rhs) do {                                       \
-		_cairo_assert_binary(_lhs, _rhs, ==);                                  \
+		_cairo_check_binary(_lhs, _rhs, ==, return);                           \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_neq(lhs, rhs) - lhs != rhs.
 #define cairo_assert_neq(_lhs, _rhs) do {                                      \
-		_cairo_assert_binary(_lhs, _rhs, !=);                                  \
+		_cairo_check_binary(_lhs, _rhs, !=, return);                           \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_gt(lhs, rhs) - lhs > rhs.
 #define cairo_assert_gt(_lhs, _rhs) do {                                       \
-		_cairo_assert_binary(_lhs, _rhs, >);                                   \
+		_cairo_check_binary(_lhs, _rhs, >, return);                            \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_ge(lhs, rhs) - lhs >= rhs.
 #define cairo_assert_ge(_lhs, _rhs) do {                                       \
-		_cairo_assert_binary(_lhs, _rhs, >=);                                  \
+		_cairo_check_binary(_lhs, _rhs, >=, return);                           \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_lt(lhs, rhs) - lhs < rhs.
 #define cairo_assert_lt(_lhs, _rhs) do {                                       \
-		_cairo_assert_binary(_lhs, _rhs, <);                                   \
+		_cairo_check_binary(_lhs, _rhs, <, return);                            \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
 /// location and operands and aborts the rest of its test.
 /// note: cairo_assert_le(lhs, rhs) - lhs <= rhs.
 #define cairo_assert_le(_lhs, _rhs) do {                                       \
-		_cairo_assert_binary(_lhs, _rhs, <=);                                  \
+		_cairo_check_binary(_lhs, _rhs, <=, return);                           \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
@@ -1008,7 +1007,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 /// note: use the '_nr'/'_nreq' forms for floating-point comparisons; '_eq' form
 /// on floats compares bit-exactly and will surprise you.
 #define cairo_assert_nr(_lhs, _rhs, _epsilon) do {                             \
-		_cairo_assert_loosely(_lhs, _rhs, _epsilon);                           \
+		_cairo_check_loosely(_lhs, _rhs, _epsilon, return);                    \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
@@ -1017,7 +1016,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 /// note: use the '_nr'/'_nreq' forms for floating-point comparisons; '_eq' form
 /// on floats compares bit-exactly and will surprise you.
 #define cairo_assert_nreq(_lhs, _rhs) do {                                     \
-		cairo_assert_nr(_lhs, _rhs, 1e-6);                                     \
+		_cairo_check_loosely(_lhs, _rhs, 1e-6, return);                        \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
@@ -1026,7 +1025,7 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 /// note: use the '_streq'/'_strneq' forms for c-strings; the '_eq'/'_neq' forms
 /// compare pointers, not content, and will surprise you.
 #define cairo_assert_streq(_lhs, _rhs) do {                                    \
-		_cairo_assert_strings(_lhs, _rhs, streq);                              \
+		_cairo_check_strings(_lhs, _rhs, streq, return);                       \
 	} while (0)
 
 /// public assertion, for use inside a test body. on failure, assert records the
@@ -1035,8 +1034,121 @@ _cairo_func void _cairo_test_report(const _cairo_test_s* const test,
 /// note: use the '_streq'/'_strneq' forms for c-strings; the '_eq'/'_neq' forms
 /// compare pointers, not content, and will surprise you.
 #define cairo_assert_strneq(_lhs, _rhs) do {                                   \
-		_cairo_assert_strings(_lhs, _rhs, strneq);                             \
+		_cairo_check_strings(_lhs, _rhs, strneq, return);                      \
 	} while (0)
+
+/// internal spelling of the cleanup-epilogue label that 'cairo_expect_*' family
+/// jumps to on failure. aliased to the user-facing 'cairo_test_end' so both the
+/// jump and the 'cairo_test_defered' label resolve to the same name.
+#define _cairo_test_end cairo_test_end
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_true(x) - x is truthy.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_true(_expr) do {                                          \
+		_cairo_check_unary(_expr, goto _cairo_test_end);                       \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_false(x) - x is falsy.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_false(_expr) do {                                         \
+		_cairo_check_unary(!(_expr), goto _cairo_test_end);                    \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_eq(lhs, rhs) - lhs == rhs.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_eq(_lhs, _rhs) do {                                       \
+		_cairo_check_binary(_lhs, _rhs, ==, goto _cairo_test_end);             \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_neq(lhs, rhs) - lhs != rhs.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_neq(_lhs, _rhs) do {                                      \
+		_cairo_check_binary(_lhs, _rhs, !=, goto _cairo_test_end);             \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_gt(lhs, rhs) - lhs > rhs.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_gt(_lhs, _rhs) do {                                       \
+		_cairo_check_binary(_lhs, _rhs, >, goto _cairo_test_end);              \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_ge(lhs, rhs) - lhs >= rhs.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_ge(_lhs, _rhs) do {                                       \
+		_cairo_check_binary(_lhs, _rhs, >=, goto _cairo_test_end);             \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_lt(lhs, rhs) - lhs < rhs.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_lt(_lhs, _rhs) do {                                       \
+		_cairo_check_binary(_lhs, _rhs, <, goto _cairo_test_end);              \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_le(lhs, rhs) - lhs <= rhs.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_le(_lhs, _rhs) do {                                       \
+		_cairo_check_binary(_lhs, _rhs, <=, goto _cairo_test_end);             \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_nr(lhs, rhs epsilon) - lhs and rhs are within epsilon.
+/// note: use the '_nr'/'_nreq' forms for floating-point comparisons; '_eq' form
+/// on floats compares bit-exactly and will surprise you.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_nr(_lhs, _rhs, _epsilon) do {                             \
+		_cairo_check_loosely(_lhs, _rhs, _epsilon, goto _cairo_test_end);      \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_nreq(lhs, rhs) - lhs and rhs are within 1e-6 epsilon.
+/// note: use the '_nr'/'_nreq' forms for floating-point comparisons; '_eq' form
+/// on floats compares bit-exactly and will surprise you.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_nreq(_lhs, _rhs) do {                                     \
+		_cairo_check_loosely(_lhs, _rhs, 1e-6, goto _cairo_test_end);          \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_streq(lhs, rhs) - lhs and rhs have equal string content.
+/// note: use the '_streq'/'_strneq' forms for c-strings; the '_eq'/'_neq' forms
+/// compare pointers, not content, and will surprise you.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_streq(_lhs, _rhs) do {                                    \
+		_cairo_check_strings(_lhs, _rhs, streq, goto _cairo_test_end);         \
+	} while (0)
+
+/// public assertion, for use inside a test body. on failure, jumps (via a goto)
+/// to '_cairo_test_end' instead of returning.
+/// note: cairo_expect_strneq(lhs, rhs) - lhs and rhs differ in string content.
+/// note: use the '_streq'/'_strneq' forms for c-strings; the '_eq'/'_neq' forms
+/// compare pointers, not content, and will surprise you.
+/// note: a test that uses any cairo_expect_* must provide 'cairo_test_defered'.
+#define cairo_expect_strneq(_lhs, _rhs) do {                                   \
+		_cairo_check_strings(_lhs, _rhs, strneq, goto _cairo_test_end);        \
+	} while (0)
+
+/// defines a defer section of a test. any tests that use 'cairo_expect_*', must
+/// end with this or the jump has no label to target.
+#define cairo_test_defered _cairo_test_end: (void)0;
 
 /// parse-status of the command line and ordered so the enumerator value doubles
 /// as an exit code: 'exit' for a clean, early stop, 'go_on' to keep the program
@@ -1499,6 +1611,19 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 #	define assert_nreq       cairo_assert_nreq
 #	define assert_streq      cairo_assert_streq
 #	define assert_strneq     cairo_assert_strneq
+#	define expect_true       cairo_expect_true
+#	define expect_false      cairo_expect_false
+#	define expect_eq         cairo_expect_eq
+#	define expect_neq        cairo_expect_neq
+#	define expect_gt         cairo_expect_gt
+#	define expect_ge         cairo_expect_ge
+#	define expect_lt         cairo_expect_lt
+#	define expect_le         cairo_expect_le
+#	define expect_nr         cairo_expect_nr
+#	define expect_nreq       cairo_expect_nreq
+#	define expect_streq      cairo_expect_streq
+#	define expect_strneq     cairo_expect_strneq
+#	define test_defered      cairo_test_defered
 #	define args_s            cairo_args_s
 #	define args_default      cairo_args_default
 #	define args_new          cairo_args_new
@@ -1515,6 +1640,7 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 /// 
 /// revision history:
 ///     vX.X.X (xxxx-xx-xx)
+///         add cairo_expect_* family and cairo_test_defered for test cleanup.
 ///         change --verbose short flag to -V, add -v/--version flag.
 ///         add cairo_disable_verbose_output setting.
 ///         add cairo_assert_streq/strneq cstrings asserts.

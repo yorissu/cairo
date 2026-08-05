@@ -131,13 +131,32 @@ cairo_test_new(strctl, nulls) {
 
 
 #include <stdlib.h>
-cairo_test_new(custom, defer) {
+
+cairo_test_new(custom, defer1) {
 	void* p = malloc(100);
-	defer { free(p); }
-	(void)p;
 	// cairo_assert_streq(NULL, "x");
 	// cairo_assert_strneq(NULL, NULL);
-	cairo_assert_true(false);
+	cairo_expect_true(false);
+
+	cairo_test_defered {
+		free(p);
+	}
+}
+
+cairo_test_new(custom, defer2) {
+	void* p = malloc(200);
+	// cairo_assert_streq(NULL, "x");
+	// cairo_assert_strneq(NULL, NULL);
+	cairo_expect_true(false);
+
+	cairo_test_defered {
+		free(p);
+	}
+}
+
+cairo_test_new(custom, defer3) {
+	cairo_expect_true(false);
+	cairo_test_defered
 }
 
 
