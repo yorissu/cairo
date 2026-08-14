@@ -152,7 +152,7 @@
 #include <stdint.h>
 
 #ifndef _cairo_version
-#	define _cairo_version "1.1.0"
+#	define _cairo_version "1.2.0"
 #endif
 
 /// override hook for 'SIZE_MAX', the largest value a 'size_t' can hold. used to
@@ -1699,7 +1699,7 @@ _cairo_test_ref(_cairo_test_dummy_ref, NULL);
 
 /// 
 /// revision history:
-///     vX.X.X (xxxx-xx-xx)
+///     v1.2.0 (2026-08-14)
 ///         add cairo_expect_* family and cairo_test_defered for test cleanup.
 ///         change --verbose short flag to -V, add -v/--version flag.
 ///         add cairo_disable_verbose_output setting.
