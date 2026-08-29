@@ -49,7 +49,7 @@ foreach(subdir IN ITEMS "examples" "tests")
 		target_link_libraries(${target_name} PRIVATE m)
 		
 		add_custom_target(${run_target}
-			COMMAND ${target_name}
+			COMMAND ${target_name} --verbose
 			DEPENDS ${target_name}
 			WORKING_DIRECTORY ${entry_path}
 			USES_TERMINAL
