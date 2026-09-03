@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.15)
-project(cairo C)
+project(cairo_examples C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -16,46 +16,50 @@ set(CAIRO_FLAGS -Wall -Wextra -Werror -Wpedantic
 )
 
 set(run_targets "")
-
-# Iterate over both target directories
-foreach(subdir IN ITEMS "examples" "tests")
+foreach(subdir IN ITEMS "examples")
 	set(subdir_path "${CMAKE_SOURCE_DIR}/${subdir}")
-	
 	if(NOT IS_DIRECTORY ${subdir_path})
 		continue()
 	endif()
 
-	file(GLOB entries RELATIVE ${subdir_path} ${subdir_path}/*)
+	file(GLOB entries RELATIVE ${subdir_path} CONFIGURE_DEPENDS ${subdir_path}/*)
 
 	foreach(entry IN LISTS entries)
 		set(entry_path "${subdir_path}/${entry}")
-		
 		if(NOT IS_DIRECTORY ${entry_path})
 			continue()
 		endif()
 
-		file(GLOB sources ${entry_path}/*.c)
+		file(GLOB sources CONFIGURE_DEPENDS ${entry_path}/*.c)
 		if(NOT sources)
 			continue()
 		endif()
 
-		# Prepend the subdirectory to avoid target collisions (e.g. examples_demo_tests vs tests_demo_tests)
-		set(target_name "${subdir}_${entry}_tests")
-		set(run_target "${subdir}_run_${entry}")
+		set(name ${entry})
+		if(TARGET ${name})
+			message(WARNING
+				"Skipping ${entry_path}: target '${name}' already exists "
+				"(name collision across examples/ and tests/)."
+			)
+			continue()
+		endif()
 
-		add_executable(${target_name} ${sources})
-		target_include_directories(${target_name} PRIVATE ${CMAKE_SOURCE_DIR})
-		target_compile_options(${target_name} PRIVATE ${CAIRO_FLAGS})
-		target_link_libraries(${target_name} PRIVATE m)
-		
-		add_custom_target(${run_target}
-			COMMAND ${target_name} --verbose
-			DEPENDS ${target_name}
+		add_executable(${name} ${sources})
+		target_include_directories(${name} PRIVATE ${CMAKE_SOURCE_DIR})
+		target_compile_options(${name} PRIVATE ${CAIRO_FLAGS})
+		target_link_libraries(${name} PRIVATE m)
+
+		# run_<name>: build if needed, then run with args from $ARGS in the
+		# environment (read at run time, no reconfigure):
+		#   ARGS="--verbose --seed 7" cmake --build build --target run_demo1
+		add_custom_target(run_${name}
+			COMMAND sh -c "exec \"$0\" $ARGS" $<TARGET_FILE:${name}>
 			WORKING_DIRECTORY ${entry_path}
 			USES_TERMINAL
+			VERBATIM
 		)
-
-		list(APPEND run_targets ${run_target})
+		add_dependencies(run_${name} ${name})
+		list(APPEND run_targets run_${name})
 	endforeach()
 endforeach()
 

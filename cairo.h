@@ -603,21 +603,21 @@ _cairo_func const void* _cairo_format_ptr(char* const buffer,
 /// types. it is the non-string table, it works the arithmetic and boolean types
 /// and sends anything else (any pointer) as a raw address.
 #define _cairo_format_non_str_type(_buffer, _value) _Generic((_value),         \
-		char:               _cairo_format_c   ,                                \
-		signed char:        _cairo_format_sc  ,                                \
-		unsigned char:      _cairo_format_uc  ,                                \
-		_Bool:              _cairo_format_b   ,                                \
-		signed short:       _cairo_format_ss  ,                                \
-		unsigned short:     _cairo_format_us  ,                                \
-		signed int:         _cairo_format_si  ,                                \
-		unsigned int:       _cairo_format_ui  ,                                \
-		signed long:        _cairo_format_sl  ,                                \
-		unsigned long:      _cairo_format_ul  ,                                \
-		signed long long:   _cairo_format_sll ,                                \
-		unsigned long long: _cairo_format_ull ,                                \
-		float:              _cairo_format_f   ,                                \
-		double:             _cairo_format_d   ,                                \
-		long double:        _cairo_format_ld  ,                                \
+		char:               _cairo_format_c  ,                                 \
+		signed char:        _cairo_format_sc ,                                 \
+		unsigned char:      _cairo_format_uc ,                                 \
+		_Bool:              _cairo_format_b  ,                                 \
+		signed short:       _cairo_format_ss ,                                 \
+		unsigned short:     _cairo_format_us ,                                 \
+		signed int:         _cairo_format_si ,                                 \
+		unsigned int:       _cairo_format_ui ,                                 \
+		signed long:        _cairo_format_sl ,                                 \
+		unsigned long:      _cairo_format_ul ,                                 \
+		signed long long:   _cairo_format_sll,                                 \
+		unsigned long long: _cairo_format_ull,                                 \
+		float:              _cairo_format_f  ,                                 \
+		double:             _cairo_format_d  ,                                 \
+		long double:        _cairo_format_ld ,                                 \
 		default:            _cairo_format_ptr                                  \
 	)((_buffer), sizeof(_buffer), (_value))
 
@@ -941,6 +941,7 @@ _cairo_func void _cairo_reader_print(_cairo_reader_s* const reader,
 
 /// outcome/status of a single test: failed, passed, or explicitly skipped.
 typedef enum _cairo_test_status_e {
+	_cairo_test_status_none,
 	_cairo_test_status_fail,
 	_cairo_test_status_pass,
 	_cairo_test_status_skip,
@@ -1009,7 +1010,7 @@ struct _cairo_test_s {
 		.suite          = #_suite                ,                             \
 		.name           = #_name                 ,                             \
 		.suite_and_name = #_suite "." #_name     ,                             \
-		.status         = _cairo_test_status_fail,                             \
+		.status         = _cairo_test_status_none,                             \
 		.result         = false                  ,                             \
 		.fail = {                                                              \
 			.lhs  = cairo_null,                                                \
@@ -1466,11 +1467,13 @@ typedef enum _cairo_args_status_e {
 /// to use when tests fail. the 'status' reports how parsing ended.
 typedef struct cairo_args_s {
 	_cairo_args_status_e _status;
+	const char*          program;
 	const char*          include;
 	const char*          exclude;
 	size_t               shuffle;
 	size_t               repeat ;
 	bool                 verbose;
+	bool                 rerun  ;
 	size_t               ecode  ;
 	bool                 list   ;
 } cairo_args_s;
@@ -1511,6 +1514,7 @@ _cairo_func void _cairo_args_usage(cairo_file* const stream,
 		"  -s, --shuffle <seed>  deterministic shuffle with a provided seed.\n"
 		"  -r, --repeat <n>      run selected tests n times.\n"
 		"  -V, --verbose         enable/disable verbose output.\n"
+		"  -R, --rerun           print full command to rerun failed tests.\n"
 		"  -x, --ecode <n>       exit code to use when tests fail.\n"
 		"  -l, --list            print all collected tests and exit.\n"
 		"  -v, --version         print the version of the cairo.\n"
@@ -1546,11 +1550,13 @@ _cairo_func void _cairo_args_report(const char* const program,
 _cairo_func cairo_args_s cairo_args_default(void) {
 	return (const cairo_args_s) {
 		._status = _cairo_args_status_go_on,
+		.program = cairo_null              ,
 		.include = "*"                     ,
 		.exclude = ""                      ,
 		.shuffle = 0                       ,
 		.repeat  = 1                       ,
 		.verbose = false                   ,
+		.rerun   = false                   ,
 		.ecode   = 1                       ,
 		.list    = false                   ,
 	};
@@ -1565,8 +1571,8 @@ _cairo_func cairo_args_s cairo_args_default(void) {
 _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 	size_t       index   = 0                   ;
 	const size_t count   = (size_t)argc        ;
-	const char*  program = argv[index++]       ;
 	cairo_args_s args    = cairo_args_default();
+	args.program         = argv[index++]       ;
 
 	for (; index < count; ++index) {
 		const char* const arg  = argv[index]                               ;
@@ -1574,13 +1580,13 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		const char* const next = nindex < count ? argv[nindex] : cairo_null;
 
 		if (_cairo_args_is(arg, "-h", "--help")) {
-			_cairo_args_usage(cairo_stdout, program);
+			_cairo_args_usage(cairo_stdout, args.program);
 			args._status = _cairo_args_status_exit;
 			break;
 		}
 
 		if (_cairo_args_is(arg, "-v", "--version")) {
-			_cairo_args_version(cairo_stdout, program);
+			_cairo_args_version(cairo_stdout, args.program);
 			args._status = _cairo_args_status_exit;
 			break;
 		}
@@ -1588,7 +1594,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		if (_cairo_args_is(arg, "-i", "--include")) {
 			if (cairo_null == next) {
 				_cairo_args_report(
-					program, "missing value for", arg, cairo_null);
+					args.program, "missing value for", arg, cairo_null);
 				args._status = _cairo_args_status_error;
 				break;
 			}
@@ -1599,7 +1605,7 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		else if (_cairo_args_is(arg, "-e", "--exclude")) {
 			if (cairo_null == next) {
 				_cairo_args_report(
-					program, "missing value for", arg, cairo_null);
+					args.program, "missing value for", arg, cairo_null);
 				args._status = _cairo_args_status_error;
 				break;
 			}
@@ -1610,14 +1616,14 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		else if (_cairo_args_is(arg, "-s", "--shuffle")) {
 			if (cairo_null == next) {
 				_cairo_args_report(
-					program, "missing value for", arg, cairo_null);
+					args.program, "missing value for", arg, cairo_null);
 				args._status = _cairo_args_status_error;
 				break;
 			}
 
 			if (!_cairo_args_number(next, &args.shuffle) || !args.shuffle) {
 				_cairo_args_report(
-					program, "expected a positive number for", arg, next);
+					args.program, "expected a positive number for", arg, next);
 				args._status = _cairo_args_status_error;
 				break;
 			}
@@ -1627,14 +1633,14 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		else if (_cairo_args_is(arg, "-r", "--repeat")) {
 			if (cairo_null == next) {
 				_cairo_args_report(
-					program, "missing value for", arg, cairo_null);
+					args.program, "missing value for", arg, cairo_null);
 				args._status = _cairo_args_status_error;
 				break;
 			}
 
 			if (!_cairo_args_number(next, &args.repeat) || !args.repeat) {
 				_cairo_args_report(
-					program, "expected a positive number for", arg, next);
+					args.program, "expected a positive number for", arg, next);
 				args._status = _cairo_args_status_error;
 				break;
 			}
@@ -1644,17 +1650,20 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 		else if (_cairo_args_is(arg, "-V", "--verbose")) {
 			args.verbose = true;
 		}
+		else if (_cairo_args_is(arg, "-R", "--rerun")) {
+			args.rerun = true;
+		}
 		else if (_cairo_args_is(arg, "-x", "--ecode")) {
 			if (cairo_null == next) {
 				_cairo_args_report(
-					program, "missing value for", arg, cairo_null);
+					args.program, "missing value for", arg, cairo_null);
 				args._status = _cairo_args_status_error;
 				break;
 			}
 
 			if (!_cairo_args_number(next, &args.ecode) || !args.ecode) {
 				_cairo_args_report(
-					program, "expected a positive number for", arg, next);
+					args.program, "expected a positive number for", arg, next);
 				args._status = _cairo_args_status_error;
 				break;
 			}
@@ -1665,13 +1674,30 @@ _cairo_func cairo_args_s cairo_args_new(const int argc, const char** argv) {
 			args.list = true;
 		}
 		else {
-			_cairo_args_report(program, "unknown option", arg, cairo_null);
+			_cairo_args_report(args.program, "unknown option", arg, cairo_null);
 			args._status = _cairo_args_status_error;
 			break;
 		}
 	}
 
 	return args;
+}
+
+// todo: document!
+_cairo_func void _cairo_args_print_begin(const cairo_args_s* const args) {
+	(void)cairo_printf("%s ", args->program);
+	(void)cairo_printf("--include \"");
+}
+
+// todo: document!
+_cairo_func void _cairo_args_print_end(const cairo_args_s* const args) {
+	(void)cairo_printf("\"");
+	if (args->shuffle != 0) (void)cairo_printf(" --shuffle %zu", args->shuffle);
+	if (args->repeat  != 1) (void)cairo_printf(" --repeat %zu" , args->repeat );
+	if (args->verbose     ) (void)cairo_printf(" --verbose"                   );
+	if (args->rerun       ) (void)cairo_printf(" --rerun"                     );
+	if (args->ecode   != 1) (void)cairo_printf(" --ecode %zu"  , args->ecode  );
+	(void)cairo_printf("\n");
 }
 
 /// the full tests run: the array of test references collected from the section,
@@ -1874,6 +1900,22 @@ _cairo_func void _cairo_tests_report(_cairo_tests_s* const tests) {
 		tests->passed, tests->failed, tests->skipped,
 		tests->passed + tests->failed + tests->skipped,
 		_cairo_format_time(tests->elapsed));
+
+	if (tests->args->rerun && tests->failed) {
+		(void)cairo_printf("\n");
+		_cairo_args_print_begin(tests->args);
+		for (size_t index = 0, findex = 0; index < tests->count; ++index) {
+			_cairo_test_s* const test = tests->data[index];
+			if (cairo_null == test) continue;
+
+			if (_cairo_test_status_fail == test->status) {
+				if (findex > 0) (void)cairo_printf(":");
+				(void)cairo_printf("%s", test->suite_and_name);
+				++findex;
+			}
+		}
+		_cairo_args_print_end(tests->args);
+	}
 }
 
 /// runs the tests according to 'args' and returns a process-ready exit code. if
@@ -1892,12 +1934,14 @@ _cairo_func int cairo_tests_run(const cairo_args_s args) {
 		return 0;
 	}
 
-	bool failed = false; for (size_t _ = 0; _ < args.repeat; ++_) {
+	bool failed = false;
+	for (size_t _ = 0; _ < args.repeat; ++_) {
 		_cairo_tests_prepare(&tests);
 		_cairo_tests_execute(&tests);
 		_cairo_tests_report(&tests);
 		if (!failed && (tests.failed > 0)) failed = true;
-	} return failed ? (int)args.ecode : 0;
+	}
+	return failed ? (int)args.ecode : 0;
 }
 
 /// helper entry point that runs all tests with default options and no cli args.
@@ -1958,6 +2002,8 @@ _cairo_test_ref(_cairo_test_dummy_ref, cairo_null);
 
 /// 
 /// revision history:
+///     vM.m.p (xxxx-xx-xx)
+///         add --rerun/-r for printing command to run all failed tests.
 ///     v1.3.0 (2026-08-29)
 ///         update reporting to include tests information by suite.
 ///         change --pattern/-p to --include/-i.

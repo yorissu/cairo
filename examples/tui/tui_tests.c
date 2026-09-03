@@ -3,8 +3,6 @@
 
 #include "cairo.h"
 
-#include <unistd.h>
-
 #define def_item(_name, _x, _y, _w, _h) (tui_item_s) {                         \
 		.name = _name,                                                         \
 		.rect = (tui_rect_s) {                                                 \
