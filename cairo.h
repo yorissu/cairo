@@ -178,7 +178,7 @@
 #include <stdint.h>
 
 #ifndef _cairo_version
-#	define _cairo_version "1.3.0"
+#	define _cairo_version "1.3.1"
 #endif
 
 /// override hook for 'NULL', the null pointer constant.
@@ -2002,7 +2002,7 @@ _cairo_test_ref(_cairo_test_dummy_ref, cairo_null);
 
 /// 
 /// revision history:
-///     vM.m.p (xxxx-xx-xx)
+///     v1.3.1 (2026-09-03)
 ///         add --rerun/-r for printing command to run all failed tests.
 ///     v1.3.0 (2026-08-29)
 ///         update reporting to include tests information by suite.
